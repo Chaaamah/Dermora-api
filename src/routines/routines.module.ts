@@ -7,6 +7,7 @@ import { freshOffers, monthlyCost } from '../catalog/pricing';
 import { RoutineEngine, TIERS, TIER_INFO } from './engine.service';
 import { NotificationsService } from '../notifications/notifications.module';
 import { RemindersModule, RemindersService } from '../reminders/reminders.module';
+import { trs } from '../common/i18n';
 
 @ApiTags('Routine')
 @ApiBearerAuth()
@@ -28,10 +29,11 @@ export class RoutinesController {
     const r = await this.engine.choose(u.id, b.tier);
     if (!r.blocked) {
       const st = await this.reminders.settings(u.id);
+      const lang = (await this.prisma.user.findUnique({ where: { id: u.id }, select: { lang: true } }))?.lang;
       await this.notifications.notify(u.id, {
         type: 'routine', link: '/app',
-        title: `Routine ${TIER_INFO[b.tier].name} activée`,
-        body: st.enabled ? `Rappels de chaque étape à ${st.amTime} le matin et ${st.pmTime} le soir. Modifiables dans votre profil.` : 'Activez les rappels dans votre profil pour être guidée à chaque étape.',
+        title: trs('Routine {name} activée', lang, { name: trs(TIER_INFO[b.tier].name, lang) }),
+        body: st.enabled ? trs('Rappels de chaque étape à {am} le matin et {pm} le soir. Modifiables dans votre profil.', lang, { am: st.amTime, pm: st.pmTime }) : trs('Activez les rappels dans votre profil pour être guidée à chaque étape.', lang),
       });
     }
     return this.engine.current(u.id);

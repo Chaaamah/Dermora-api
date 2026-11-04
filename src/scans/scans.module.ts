@@ -8,6 +8,13 @@ import { OnDeviceScanZ, scoreScan, summarize } from './providers';
 const FREE_SCANS_PER_MONTH = Number(process.env.FREE_SCANS_PER_MONTH ?? 10);
 export const COSMETIC_NOTICE = 'Analyse cosmétique, pas un avis médical.';
 
+/** Résumé en 3 points dans la langue actuelle (recalculé à partir des niveaux enregistrés). */
+export function localized(s: { summary: string[]; results: unknown }, lang?: string | null): string[] {
+  const r = s.results as { zones?: unknown; concerns?: unknown } | null;
+  if (!r?.zones || !r?.concerns) return s.summary;
+  try { return summarize(r as Parameters<typeof summarize>[0], lang ?? 'fr'); } catch { return s.summary; }
+}
+
 @ApiTags('Diagnostic')
 @ApiBearerAuth()
 @UseGuards(AuthGuard)
@@ -41,15 +48,19 @@ export class ScansController {
 
   @Get()
   async list(@CurrentUser() u: AuthUser) {
-    const scans = await this.prisma.scan.findMany({ where: { userId: u.id }, orderBy: { createdAt: 'desc' } });
-    return scans.map((s) => ({ ...s, notice: COSMETIC_NOTICE }));
+    const [scans, me] = await Promise.all([
+      this.prisma.scan.findMany({ where: { userId: u.id }, orderBy: { createdAt: 'desc' } }),
+      this.prisma.user.findUnique({ where: { id: u.id }, select: { lang: true } }),
+    ]);
+    return scans.map((s) => ({ ...s, summary: localized(s, me?.lang), notice: COSMETIC_NOTICE }));
   }
 
   @Get(':id')
   async one(@CurrentUser() u: AuthUser, @Param('id') id: string) {
     const s = await this.prisma.scan.findFirst({ where: { id, userId: u.id } });
     if (!s) throw new NotFoundException();
-    return { ...s, notice: COSMETIC_NOTICE };
+    const me = await this.prisma.user.findUnique({ where: { id: u.id }, select: { lang: true } });
+    return { ...s, summary: localized(s, me?.lang), notice: COSMETIC_NOTICE };
   }
 }
 
