@@ -35,6 +35,12 @@ services:
         sync: false
       - key: ASSISTANT_MODEL
         value: claude-opus-5-5
+      - key: BREVO_API_KEY       # e-mails via l'API HTTPS de Brevo (le plan gratuit de Render bloque le SMTP)
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
       - key: SMTP_HOST
         value: smtp-relay.brevo.com
       - key: SMTP_PORT

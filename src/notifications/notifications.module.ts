@@ -64,27 +64,66 @@ export class NotificationsService {
   }
 }
 
-/** Envoi d'e-mails. Sans SMTP configuré, le message est seulement journalisé (mode développement). */
+/**
+ * Envoi d'e-mails.
+ * 1. BREVO_API_KEY : API HTTPS de Brevo (recommandé : l'offre gratuite de Render bloque les ports SMTP sortants).
+ * 2. Sinon SMTP (SMTP_HOST…), avec délais maximum pour ne jamais bloquer une requête.
+ * 3. Sans configuration : le message est seulement journalisé (développement).
+ */
 @Injectable()
 export class MailerService {
   private log = new Logger('Mailer');
+  private clean = (v?: string) => (v ?? '').trim().replace(/^[<"'\s]+|[>"'\s]+$/g, '');
+  private brevoKey = this.clean(process.env.BREVO_API_KEY);
   private transport = process.env.SMTP_HOST
     ? nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
+        host: this.clean(process.env.SMTP_HOST),
         port: Number(process.env.SMTP_PORT ?? 587),
         secure: process.env.SMTP_SECURE === 'true',
-        auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } : undefined,
+        auth: process.env.SMTP_USER ? { user: this.clean(process.env.SMTP_USER), pass: this.clean(process.env.SMTP_PASS) } : undefined,
+        connectionTimeout: 10_000, greetingTimeout: 10_000, socketTimeout: 15_000,
       })
     : null;
 
-  get configured() { return !!this.transport; }
+  get configured() { return !!this.brevoKey || !!this.transport; }
+
+  /** Expéditeur : MAIL_FROM = « Nom <adresse> » (adresse validée dans Brevo) */
+  private sender() {
+    const raw = (process.env.MAIL_FROM ?? 'Dermora <no-reply@dermora.ma>').trim();
+    const m = /^(.*?)\s*<\s*([^<>\s]+@[^<>\s]+)\s*>\s*$/.exec(raw);
+    if (m) return { name: this.clean(m[1]) || 'Dermora', email: m[2] };
+    return { name: 'Dermora', email: this.clean(raw) };
+  }
 
   async send(to: string, subject: string, text: string, html?: string) {
-    if (!this.transport) {
-      this.log.log(`[dev] e-mail à ${to} — ${subject}\n${text}`);
+    if (this.brevoKey) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 15_000);
+      try {
+        const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+          method: 'POST', signal: ctrl.signal,
+          headers: { 'api-key': this.brevoKey, 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ sender: this.sender(), to: [{ email: to }], subject, textContent: text, ...(html ? { htmlContent: html } : {}) }),
+        });
+        if (!res.ok) throw new Error(`Brevo ${res.status} : ${(await res.text()).slice(0, 300)}`);
+        this.log.log(`E-mail envoyé à ${to} — ${subject}`);
+      } finally {
+        clearTimeout(timer);
+      }
       return;
     }
-    await this.transport.sendMail({ from: process.env.MAIL_FROM ?? 'Dermora <no-reply@dermora.ma>', to, subject, text, html });
+    if (this.transport) {
+      const s = this.sender();
+      await this.transport.sendMail({ from: `${s.name} <${s.email}>`, to, subject, text, html });
+      this.log.log(`E-mail envoyé à ${to} — ${subject}`);
+      return;
+    }
+    this.log.log(`[dev] e-mail à ${to} — ${subject}\n${text}`);
+  }
+
+  /** Envoi en arrière-plan : la réponse HTTP n'attend jamais le serveur d'e-mails ; les échecs sont journalisés. */
+  sendInBackground(to: string, subject: string, text: string, html?: string) {
+    void this.send(to, subject, text, html).catch((e) => this.log.error(`Échec de l'envoi à ${to} (${subject}) : ${(e as Error).message}`));
   }
 }
 

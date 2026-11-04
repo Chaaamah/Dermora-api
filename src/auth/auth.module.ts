@@ -61,7 +61,7 @@ export class AuthService {
     const link = `${publicWebUrl()}/verify?token=${token}`;
     const T = MAIL[user.lang === 'en' ? 'en' : user.lang === 'ar' ? 'ar' : 'fr'];
     const dir = user.lang === 'ar' ? 'rtl' : 'ltr';
-    await this.mailer.send(
+    this.mailer.sendInBackground(
       user.email!,
       T.subject,
       `${T.hello} ${user.firstName ?? ''},\n\n${T.body}\n${link}\n\n${T.expires}\n\nCare Beyond Beauty — Dermora`,
@@ -112,7 +112,7 @@ export class AuthService {
     }
     const code = String(randomInt(100000, 999999));
     await this.prisma.user.update({ where: { id: user.id }, data: { resetCodeHash: sha(user.id + code), resetExpiresAt: new Date(Date.now() + 15 * 60_000), resetAttempts: 0 } });
-    await this.mailer.send(
+    this.mailer.sendInBackground(
       user.email,
       'Dermora — réinitialisation de votre mot de passe',
       `Bonjour ${user.firstName ?? ''},\n\nVotre code de réinitialisation Dermora : ${code}\nIl est valable 15 minutes.\n\nSi vous n'êtes pas à l'origine de cette demande, ignorez ce message.\n\nCare Beyond Beauty — Dermora`,
