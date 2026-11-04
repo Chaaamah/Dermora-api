@@ -1,0 +1,59 @@
+# Blueprint Render — API Dermora (dépôt Dermora-api)
+# Render > New > Blueprint > dépôt Dermora-api. Les variables « sync: false » se collent dans le tableau de bord
+# (Environment > Add from .env : coller le fichier render.env préparé à côté du projet).
+services:
+  - type: web
+    name: dermora-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    region: frankfurt
+    plan: free               # passer à « starter » en production (pas de mise en veille)
+    healthCheckPath: /v1/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "4000"
+      - key: DB_PUSH_ON_START
+        value: "true"
+      - key: DATABASE_URL        # Supabase « Transaction pooler » (6543) + ?pgbouncer=true&connection_limit=1&schema=app
+        sync: false
+      - key: DIRECT_URL          # Supabase « Session pooler » (5432) + ?schema=app
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: CRON_SECRET
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: PUBLIC_WEB_URL
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ASSISTANT_MODEL
+        value: claude-opus-5-5
+      - key: SMTP_HOST
+        value: smtp-relay.brevo.com
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_SECURE
+        value: "false"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT
+        sync: false
+      - key: REQUIRE_EXPERT_VALIDATION
+        value: "false"           # « true » une fois les fiches validées par le pharmacien
+      - key: PRICE_SYNC_HOURS
+        value: "24"
+      - key: REMINDERS_INTERVAL_MIN
+        value: "5"
+      - key: FREE_SCANS_PER_MONTH
+        value: "10"

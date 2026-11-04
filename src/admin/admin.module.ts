@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Module, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Module, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuditService, PrismaService } from '../common/common.module';
 import { AuthGuard, AuthUser, CurrentUser, Roles, parse, z } from '../common/auth';
@@ -57,6 +57,17 @@ export class AdminController {
   async withdraw(@CurrentUser() u: AuthUser, @Param('id') id: string) {
     await this.audit.log(u.id, 'withdraw_product', `product:${id}`);
     return this.prisma.product.update({ where: { id }, data: { status: 'WITHDRAWN' } });
+  }
+
+  /** Validation par le pharmacien conseil d'une fiche produit, d'un rituel ou d'un article (publiés si REQUIRE_EXPERT_VALIDATION=true) */
+  @Patch('validate/:kind/:id')
+  async validate(@CurrentUser() u: AuthUser, @Param('kind') kind: string, @Param('id') id: string, @Body() body: unknown) {
+    const b = parse(z.object({ validatedBy: z.string().min(3).max(120) }), body);
+    await this.audit.log(u.id, 'validate_content', `${kind}:${id}`);
+    if (kind === 'product') return this.prisma.product.update({ where: { id }, data: { validatedBy: b.validatedBy, validatedAt: new Date() } });
+    if (kind === 'ritual') return this.prisma.ritual.update({ where: { id }, data: { validatedBy: b.validatedBy, validatedAt: new Date() } });
+    if (kind === 'article') return this.prisma.article.update({ where: { id }, data: { validatedBy: b.validatedBy } });
+    throw new BadRequestException('kind : product | ritual | article');
   }
 
   @Get('reports')

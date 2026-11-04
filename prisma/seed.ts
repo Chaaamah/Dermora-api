@@ -4,6 +4,7 @@
  * Les prix sont INDICATIFS (démo) et les parapharmacies sont fictives.
  * En production, le catalogue est saisi et validé dans le back-office par l'expert conseil.
  */
+import { importRituals } from './rituals';
 import { PrismaClient } from '@prisma/client';
 import { randomBytes, scryptSync } from 'crypto';
 
@@ -188,7 +189,7 @@ async function main() {
     });
   }
 
-  for (const r of RITUALS) await prisma.ritual.create({ data: { ...r, validatedBy: EXPERT, validatedAt: now } });
+  await importRituals(prisma);
   for (const a of ARTICLES) await prisma.article.create({ data: { ...a, validatedBy: EXPERT } });
   for (const r of RULES) await prisma.routineRule.create({ data: r as never });
 

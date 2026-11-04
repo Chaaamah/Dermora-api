@@ -8,12 +8,21 @@ import { freshOffers, monthlyCost } from '../catalog/pricing';
 type FullProduct = Prisma.ProductGetPayload<{ include: typeof productInclude }>;
 interface Candidate { product: FullProduct; score: number; cost: number }
 interface Slot { key: string; domain: string; category: string; optional: boolean; candidates: Candidate[]; idx: number; dropped: boolean; natural?: Candidate }
+type StepInput = Prisma.RoutineStepCreateWithoutRoutineInput & { productId: string };
 
 const ESSENTIAL = new Set(['cleanser', 'sunscreen', 'moisturizer', 'shampoo']);
 
+export const TIERS = ['eco', 'equilibre', 'premium'] as const;
+export type Tier = (typeof TIERS)[number];
+export const TIER_INFO: Record<Tier, { name: string; tagline: string }> = {
+  eco: { name: 'Essentielle', tagline: 'Les gestes indispensables, aux meilleurs prix.' },
+  equilibre: { name: 'Équilibre', tagline: 'Une routine complète, au juste prix.' },
+  premium: { name: 'Premium', tagline: 'Les soins les plus haut de gamme adaptés à votre peau.' },
+};
+
 /**
  * Moteur de routine — règles validées par l'expert (matrice RoutineRule),
- * exclusions (grossesse, sensibilité, allergies), budget mensuel.
+ * exclusions (grossesse, sensibilité, allergies), formule ou budget mensuel.
  * Aucun modèle de langage ne choisit de produit ici.
  */
 @Injectable()
@@ -45,21 +54,18 @@ export class RoutineEngine {
     return s; // RG-10 : « sponsorisé » n'entre jamais dans le score
   }
 
-  async generate(userId: string, budgetMad: number) {
+  /** Profil, règles applicables et produits candidats par étape (commun à toutes les formules). */
+  private async prepare(userId: string) {
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
       include: { skinProfile: true, hairProfile: true, scans: { orderBy: { createdAt: 'desc' }, take: 1 } },
     });
     const skin = user.skinProfile;
     const hair = user.hairProfile;
-    await this.prisma.routine.updateMany({ where: { userId, active: true }, data: { active: false } });
-
     const alert = safetyAlert(skin, hair);
-    if (alert) {
-      // RG-02 : la routine est bloquée, orientation vers un médecin
-      return this.prisma.routine.create({ data: { userId, budgetMad, blocked: true, blockReason: alert, notes: ['Consultez un dermatologue ou un médecin avant de commencer une routine.'] } });
-    }
-    if (!skin) throw new NotFoundException('Complétez d\'abord le questionnaire peau.');
+    const slots = new Map<string, Slot>();
+    const activeRules: RoutineRule[] = [];
+    if (alert || !skin) return { skin, hair, alert, slots, activeRules };
 
     const concerns = new Set<string>(skin.concerns);
     const scanConcerns = (user.scans[0]?.results as { concerns?: Record<string, string> } | undefined)?.concerns ?? {};
@@ -75,8 +81,6 @@ export class RoutineEngine {
     const products = await this.prisma.product.findMany({ where: { status: 'ACTIVE' }, include: productInclude });
 
     // Un « slot » par catégorie : un même nettoyant sert matin et soir.
-    const slots = new Map<string, Slot>();
-    const activeRules: RoutineRule[] = [];
     for (const r of rules) {
       const cond = (r.conditions ?? {}) as { concerns?: string[] };
       if (cond.concerns && !cond.concerns.some((c) => concerns.has(c))) continue;
@@ -96,8 +100,33 @@ export class RoutineEngine {
       }
       activeRules.push(r);
     }
+    return { skin, hair, alert, slots, activeRules };
+  }
 
-    // Ajustement au budget (DER-21)
+  /**
+   * Choix du produit par étape selon la formule :
+   * - eco : le moins cher parmi les produits pertinents, une seule étape facultative (la plus utile) ;
+   * - equilibre : un prix médian parmi les produits les mieux adaptés ;
+   * - premium : le plus haut de gamme parmi les produits les mieux adaptés.
+   */
+  private applyTier(slots: Map<string, Slot>, tier: Tier) {
+    for (const s of slots.values()) {
+      s.dropped = false;
+      const best = s.candidates[0].score;
+      const relevant = s.candidates.map((c, i) => ({ c, i })).filter(({ c }) => c.score >= best - (tier === 'eco' ? 2 : 1));
+      const byCost = [...relevant].sort((a, b) => a.c.cost - b.c.cost);
+      s.idx = tier === 'eco' ? byCost[0].i : tier === 'premium' ? byCost[byCost.length - 1].i : byCost[Math.floor((byCost.length - 1) / 2)].i;
+    }
+    if (tier === 'eco') {
+      const extras = [...slots.values()].filter((s) => s.optional && !ESSENTIAL.has(s.category));
+      const keep = extras.filter((s) => s.domain === 'skin').sort((a, b) => b.candidates[b.idx].score - a.candidates[a.idx].score)[0];
+      for (const s of extras) if (s !== keep) s.dropped = true;
+    }
+  }
+
+  /** Ajustement à un budget mensuel (DER-21) */
+  private applyBudget(slots: Map<string, Slot>, budgetMad: number) {
+    for (const s of slots.values()) { s.idx = 0; s.dropped = false; }
     const total = () => [...slots.values()].filter((s) => !s.dropped).reduce((sum, s) => sum + s.candidates[s.idx].cost, 0);
     let guard = 0;
     while (total() > budgetMad && guard++ < 200) {
@@ -117,19 +146,10 @@ export class RoutineEngine {
       if (!droppable) break;
       droppable.dropped = true;
     }
-    const totalMad = Math.round(total() * 10) / 10;
+  }
 
-    const notes: string[] = [
-      'Introduisez un seul nouveau produit à la fois, en suivant les semaines indiquées.',
-      'Faites un test sur une petite zone (derrière l\'oreille) 48 h avant chaque nouveau produit.',
-      'La protection solaire est indispensable chaque matin, même en hiver.',
-    ];
-    if (skin.pregnant || skin.breastfeeding) notes.push('Grossesse / allaitement : les ingrédients déconseillés (rétinoïdes, acide salicylique fort…) ont été exclus.');
-    if (totalMad > budgetMad) notes.push(`Budget minimum pour une routine sûre : ${Math.ceil(totalMad)} MAD / mois.`);
-    const droppedSlots = [...slots.values()].filter((s) => s.dropped);
-    if (droppedSlots.length) notes.push('Certaines étapes facultatives ont été retirées pour respecter votre budget.');
-
-    const steps: Prisma.RoutineStepCreateWithoutRoutineInput[] = [];
+  private build(slots: Map<string, Slot>, activeRules: RoutineRule[], hair: HairProfile | null) {
+    const steps: StepInput[] = [];
     for (const r of activeRules) {
       const s = slots.get(`${r.domain}:${r.category}`);
       if (!s || s.dropped) continue;
@@ -142,8 +162,69 @@ export class RoutineEngine {
         alternatives: { cheaper: cheaper?.product.id ?? null, natural: s.natural && s.natural.product.id !== chosen.product.id ? s.natural.product.id : null },
       });
     }
+    // Numérotation continue par moment (une étape retirée ne laisse pas de trou)
+    for (const m of ['AM', 'PM', 'HAIR']) steps.filter((x) => x.moment === m).forEach((x, i) => { x.order = i + 1; });
+    const kept = [...slots.values()].filter((s) => !s.dropped);
+    const totalMad = Math.round(kept.reduce((sum, s) => sum + s.candidates[s.idx].cost, 0) * 10) / 10;
+    return { steps, totalMad, dropped: kept.length < slots.size };
+  }
 
-    return this.prisma.routine.create({ data: { userId, budgetMad, totalMad, notes, steps: { create: steps } } });
+  private notes(skin: SkinProfile, extra: string[] = []) {
+    const notes = [
+      'Introduisez un seul nouveau produit à la fois, en suivant les semaines indiquées.',
+      'Faites un test sur une petite zone (derrière l\'oreille) 48 h avant chaque nouveau produit.',
+      'La protection solaire est indispensable chaque matin, même en hiver.',
+    ];
+    if (skin.pregnant || skin.breastfeeding) notes.push('Grossesse / allaitement : les ingrédients déconseillés (rétinoïdes, acide salicylique fort…) ont été exclus.');
+    return [...notes, ...extra];
+  }
+
+  /** Trois formules, de la plus économique à la plus haut de gamme, sans rien enregistrer. */
+  async options(userId: string) {
+    const { skin, hair, alert, slots, activeRules } = await this.prepare(userId);
+    if (alert) return { blocked: true, blockReason: alert, options: [] };
+    if (!skin) throw new NotFoundException('Complétez d\'abord le questionnaire peau.');
+    const out: { tier: Tier; name: string; tagline: string; totalMad: number; steps: unknown[] }[] = [];
+    for (const tier of TIERS) {
+      this.applyTier(slots, tier);
+      const b = this.build(slots, activeRules, hair);
+      if (out.some((o) => o.totalMad === b.totalMad)) continue; // formule identique à une précédente
+      const prods = await this.prisma.product.findMany({ where: { id: { in: [...new Set(b.steps.map((s) => s.productId))] } }, include: productInclude });
+      const map = new Map(prods.map((p) => [p.id, serializeProduct(p)]));
+      out.push({
+        tier, name: TIER_INFO[tier].name, tagline: TIER_INFO[tier].tagline, totalMad: b.totalMad,
+        steps: b.steps.map((s) => ({ moment: s.moment, order: s.order, step: s.step, category: s.category, monthlyMad: s.monthlyMad, frequency: s.frequency, product: map.get(s.productId) ?? null })),
+      });
+    }
+    return { blocked: false, blockReason: null, options: out };
+  }
+
+  async choose(userId: string, tier: Tier) {
+    const { skin, hair, alert, slots, activeRules } = await this.prepare(userId);
+    await this.prisma.routine.updateMany({ where: { userId, active: true }, data: { active: false } });
+    if (alert) return this.blocked(userId, alert);
+    if (!skin) throw new NotFoundException('Complétez d\'abord le questionnaire peau.');
+    this.applyTier(slots, tier);
+    const b = this.build(slots, activeRules, hair);
+    return this.prisma.routine.create({ data: { userId, tier, budgetMad: Math.ceil(b.totalMad), totalMad: b.totalMad, notes: this.notes(skin), steps: { create: b.steps } } });
+  }
+
+  async generate(userId: string, budgetMad: number) {
+    const { skin, hair, alert, slots, activeRules } = await this.prepare(userId);
+    await this.prisma.routine.updateMany({ where: { userId, active: true }, data: { active: false } });
+    if (alert) return this.blocked(userId, alert, budgetMad);
+    if (!skin) throw new NotFoundException('Complétez d\'abord le questionnaire peau.');
+    this.applyBudget(slots, budgetMad);
+    const b = this.build(slots, activeRules, hair);
+    const extra: string[] = [];
+    if (b.totalMad > budgetMad) extra.push(`Budget minimum pour une routine sûre : ${Math.ceil(b.totalMad)} MAD / mois.`);
+    if (b.dropped) extra.push('Certaines étapes facultatives ont été retirées pour respecter votre budget.');
+    return this.prisma.routine.create({ data: { userId, tier: 'budget', budgetMad, totalMad: b.totalMad, notes: this.notes(skin, extra), steps: { create: b.steps } } });
+  }
+
+  // RG-02 : la routine est bloquée, orientation vers un médecin
+  private blocked(userId: string, alert: string, budgetMad = 0) {
+    return this.prisma.routine.create({ data: { userId, budgetMad, blocked: true, blockReason: alert, notes: ['Consultez un dermatologue ou un médecin avant de commencer une routine.'] } });
   }
 
   async current(userId: string) {
@@ -160,6 +241,7 @@ export class RoutineEngine {
     const map = new Map(prods.map((p) => [p.id, serializeProduct(p)]));
     return {
       ...r,
+      tierName: r.tier && r.tier in TIER_INFO ? TIER_INFO[r.tier as Tier].name : r.tier === 'budget' ? 'Sur mesure' : null,
       steps: r.steps.map((s) => {
         const alt = (s.alternatives ?? {}) as { cheaper?: string; natural?: string };
         return { ...s, product: s.productId ? map.get(s.productId) ?? null : null, cheaper: alt.cheaper ? map.get(alt.cheaper) ?? null : null, natural: alt.natural ? map.get(alt.natural) ?? null : null };

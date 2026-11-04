@@ -12,6 +12,7 @@ import { AdminModule } from './admin/admin.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { MessagingModule } from './messaging/messaging.service';
 import { AdsModule } from './ads/ads.module';
+import { RemindersModule } from './reminders/reminders.module';
 
 @Controller()
 class HealthController {
@@ -22,7 +23,7 @@ class HealthController {
 }
 
 @Module({
-  imports: [CommonModule, NotificationsModule, MessagingModule, AdsModule, AuthModule, MeModule, CatalogModule, ScansModule, RoutinesModule, CareModule, ProModule, AssistantModule, AdminModule],
+  imports: [CommonModule, NotificationsModule, MessagingModule, AdsModule, RemindersModule, AuthModule, MeModule, CatalogModule, ScansModule, RoutinesModule, CareModule, ProModule, AssistantModule, AdminModule],
   controllers: [HealthController],
 })
 export class AppModule {}

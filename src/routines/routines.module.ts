@@ -4,14 +4,38 @@ import { PrismaService } from '../common/common.module';
 import { AuthGuard, AuthUser, CurrentUser, parse, today, z } from '../common/auth';
 import { productInclude } from '../catalog/catalog.module';
 import { freshOffers, monthlyCost } from '../catalog/pricing';
-import { RoutineEngine } from './engine.service';
+import { RoutineEngine, TIERS, TIER_INFO } from './engine.service';
+import { NotificationsService } from '../notifications/notifications.module';
+import { RemindersModule, RemindersService } from '../reminders/reminders.module';
 
 @ApiTags('Routine')
 @ApiBearerAuth()
 @UseGuards(AuthGuard)
 @Controller('routines')
 export class RoutinesController {
-  constructor(private prisma: PrismaService, private engine: RoutineEngine) {}
+  constructor(private prisma: PrismaService, private engine: RoutineEngine, private reminders: RemindersService, private notifications: NotificationsService) {}
+
+  /** Trois formules (Essentielle → Premium) calculées pour la cliente, sans rien enregistrer */
+  @Get('options')
+  options(@CurrentUser() u: AuthUser) {
+    return this.engine.options(u.id);
+  }
+
+  /** La cliente choisit sa formule : la routine est enregistrée et les rappels par étape activés */
+  @Post('choose')
+  async choose(@CurrentUser() u: AuthUser, @Body() body: unknown) {
+    const b = parse(z.object({ tier: z.enum(TIERS) }), body);
+    const r = await this.engine.choose(u.id, b.tier);
+    if (!r.blocked) {
+      const st = await this.reminders.settings(u.id);
+      await this.notifications.notify(u.id, {
+        type: 'routine', link: '/app',
+        title: `Routine ${TIER_INFO[b.tier].name} activée`,
+        body: st.enabled ? `Rappels de chaque étape à ${st.amTime} le matin et ${st.pmTime} le soir. Modifiables dans votre profil.` : 'Activez les rappels dans votre profil pour être guidée à chaque étape.',
+      });
+    }
+    return this.engine.current(u.id);
+  }
 
   @Post('generate')
   async generate(@CurrentUser() u: AuthUser, @Body() body: unknown) {
@@ -122,5 +146,5 @@ export async function computeStats(prisma: PrismaService, userId: string) {
   };
 }
 
-@Module({ controllers: [RoutinesController, TrackingController], providers: [RoutineEngine], exports: [RoutineEngine] })
+@Module({ imports: [RemindersModule], controllers: [RoutinesController, TrackingController], providers: [RoutineEngine], exports: [RoutineEngine] })
 export class RoutinesModule {}
