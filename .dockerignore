@@ -1,0 +1,6 @@
+node_modules
+dist
+.env
+*.log
+prisma/research/build.log
+prisma/research/candidates.json

@@ -1,0 +1,470 @@
+// Dermora — dermora_db
+// Schéma `app`  : comptes, catalogue, contenus, partenaires, audit
+// Schéma `care` : données de peau / cheveux (rôle restreint en production)
+
+generator client {
+  provider        = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["app", "care"]
+}
+
+enum Role {
+  CLIENT
+  DERMATOLOGIST
+  EXPERT
+  ADMIN
+
+  @@schema("app")
+}
+
+// ───────────────────────────── app ─────────────────────────────
+
+model User {
+  id           String    @id @default(cuid())
+  email        String?   @unique
+  passwordHash String?
+  phone        String?   @unique
+  role         Role      @default(CLIENT)
+  resetCodeHash  String?
+  resetExpiresAt DateTime?
+  resetAttempts  Int     @default(0)
+  firstName  String?
+  lang       String    @default("fr")
+  city       String?
+  birthDate  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  consents      Consent[]
+  skinProfile   SkinProfile?
+  hairProfile   HairProfile?
+  scans         Scan[]
+  routines      Routine[]
+  checks        RoutineCheck[]
+  notes         SkinNote[]
+  favorites     Favorite[]
+  dermatologist Dermatologist?
+  careLinks     CareLink[]     @relation("PatientLinks")
+  messages      Message[]      @relation("PatientMessages")
+  clinicalNotes ClinicalNote[] @relation("PatientClinicalNotes")
+  notifications Notification[]
+
+  @@schema("app")
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String // message | care_request | care_accepted | care_declined | recommendation | routine | system
+  title     String
+  body      String
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@schema("app")
+}
+
+/// Emplacements publicitaires — toujours signalés « Publicité » (loi 31-08, RG-10).
+model Ad {
+  id         String   @id @default(cuid())
+  placement  String // home_banner | discovery_inline | guide_inline
+  advertiser String
+  title      String
+  body       String
+  cta        String
+  url        String
+  tone       String   @default("rose") // rose | gold | night
+  active     Boolean  @default(true)
+  impressions Int     @default(0)
+  clicks     Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@schema("app")
+}
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  phone     String
+  codeHash  String
+  channel   String   @default("sms")
+  attempts  Int      @default(0)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+  @@schema("app")
+}
+
+model Consent {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String // photos | skin_data | model_improvement | marketing | care_sharing
+  version   String    @default("1.0")
+  granted   Boolean
+  createdAt DateTime  @default(now())
+  revokedAt DateTime?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@schema("app")
+}
+
+model Ingredient {
+  id              String              @id @default(cuid())
+  inci            String              @unique
+  nameFr          String
+  function        String
+  pregnancyUnsafe Boolean             @default(false)
+  irritant        Boolean             @default(false)
+  banned          Boolean             @default(false)
+  precautions     String?
+  regulatory      String              @default("autorisé")
+  products        ProductIngredient[]
+
+  @@schema("app")
+}
+
+model Product {
+  id           String              @id @default(cuid())
+  brand        String
+  name         String
+  domain       String              @default("skin") // skin | hair
+  category     String // cleanser | serum | moisturizer | sunscreen | treatment | shampoo | conditioner | hair_mask | hair_oil
+  sizeMl       Int?
+  monthsSupply Float               @default(2)
+  skinTypes    String[] // seche | grasse | mixte | normale | all ; hair: boucle types | all
+  concerns     String[] // acne | taches | rides | pores | secheresse | rougeurs | eclat | chute | frisottis | pellicules
+  avoidFor     String[] // pregnancy | sensitive
+  description  String
+  howTo        String
+  precautions  String?
+  isNatural    Boolean             @default(false)
+  sponsored    Boolean             @default(false)
+  imageUrl     String?
+  imageSource  String? // marchand d'où provient la photo
+  sourceKey    String?             @unique // identifiant du catalogue importé
+  status       String              @default("ACTIVE") // ACTIVE | WITHDRAWN
+  validatedBy  String?
+  validatedAt  DateTime?
+  createdAt    DateTime            @default(now())
+  ingredients  ProductIngredient[]
+  offers       Offer[]
+  favorites    Favorite[]
+
+  @@schema("app")
+}
+
+model ProductIngredient {
+  productId    String
+  ingredientId String
+  key          Boolean    @default(false)
+  product      Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@id([productId, ingredientId])
+  @@schema("app")
+}
+
+model Merchant {
+  id       String  @id @default(cuid())
+  name     String
+  type     String // ONLINE | STORE
+  city     String?
+  website  String?
+  verified Boolean @default(true)
+  partner  Boolean @default(false) // contrat d'affiliation signé
+  platform String? // woocommerce
+  apiBase  String?
+  offers   Offer[]
+
+  @@schema("app")
+}
+
+model Offer {
+  id         String   @id @default(cuid())
+  productId  String
+  merchantId String
+  priceMad   Float
+  regularMad Float?
+  externalId String? // identifiant du produit chez le marchand (relevé automatique des prix)
+  inStock    Boolean  @default(true)
+  url        String
+  updatedAt  DateTime @default(now())
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  @@schema("app")
+}
+
+model Ritual {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  ingredient  String
+  forDomain   String // skin | hair
+  benefits    String
+  howTo       String
+  precautions String[]
+  avoidFor    String[]
+  validatedBy String?
+  validatedAt DateTime?
+
+  @@schema("app")
+}
+
+model Article {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  summary     String
+  body        String
+  readMinutes Int      @default(3)
+  tag         String
+  validatedBy String?
+  createdAt   DateTime @default(now())
+
+  @@schema("app")
+}
+
+model RoutineRule {
+  id         String  @id @default(cuid())
+  domain     String  @default("skin")
+  moment     String // AM | PM | HAIR
+  order      Int
+  step       String // nettoyant, sérum ciblé…
+  category   String
+  optional   Boolean @default(false)
+  frequency  String  @default("chaque jour")
+  quantity   String?
+  introWeek  Int     @default(1)
+  conditions Json? // { concerns?: string[] }
+  validated  Boolean @default(true)
+
+  @@schema("app")
+}
+
+model ClickEvent {
+  id         String   @id @default(cuid())
+  productId  String
+  merchantId String
+  userId     String?
+  createdAt  DateTime @default(now())
+
+  @@schema("app")
+}
+
+model Favorite {
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([userId, productId])
+  @@schema("app")
+}
+
+model Dermatologist {
+  id          String     @id @default(cuid())
+  userId      String     @unique
+  fullName    String
+  title       String     @default("Dermatologue")
+  ordreNumber String
+  verified    Boolean    @default(false)
+  city        String
+  bio         String?
+  languages   String[]
+  priceMad    Int        @default(300)
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  links       CareLink[]
+
+  @@schema("app")
+}
+
+model Report {
+  id        String   @id @default(cuid())
+  userId    String?
+  kind      String // counterfeit | reaction | wrong_price | other
+  productId String?
+  message   String
+  status    String   @default("OPEN")
+  createdAt DateTime @default(now())
+
+  @@schema("app")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String
+  action    String
+  object    String
+  createdAt DateTime @default(now())
+
+  @@schema("app")
+}
+
+// ───────────────────────────── care ─────────────────────────────
+
+model SkinProfile {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  skinType         String // seche | grasse | mixte | normale
+  sensitive        Boolean  @default(false)
+  phototype        Int      @default(3)
+  concerns         String[]
+  pregnant         Boolean  @default(false)
+  breastfeeding    Boolean  @default(false)
+  allergies        String[]
+  currentProducts  String?
+  moleChanging     Boolean  @default(false)
+  lesionNotHealing Boolean  @default(false)
+  painfulRash      Boolean  @default(false)
+  updatedAt        DateTime @updatedAt
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@schema("care")
+}
+
+model HairProfile {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  curlType       String // lisse | ondule | boucle | crepu
+  porosity       String // faible | moyenne | forte
+  scalp          String // normal | gras | sec | pellicules
+  hairLoss       String   @default("non") // non | legere | importante
+  suddenHairLoss Boolean  @default(false)
+  colored        Boolean  @default(false)
+  washPerWeek    Int      @default(2)
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@schema("care")
+}
+
+model Scan {
+  id         String   @id @default(cuid())
+  userId     String
+  type       String   @default("skin")
+  provider   String
+  costMad    Float    @default(0)
+  results    Json // { zones: {...}, concerns: {...} }
+  summary    String[]
+  photoKept  Boolean  @default(false)
+  photoRef   String?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@schema("care")
+}
+
+model Routine {
+  id          String        @id @default(cuid())
+  userId      String
+  budgetMad   Int
+  totalMad    Float         @default(0)
+  active      Boolean       @default(true)
+  blocked     Boolean       @default(false)
+  blockReason String?
+  notes       String[]
+  createdAt   DateTime      @default(now())
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  steps       RoutineStep[]
+
+  @@schema("care")
+}
+
+model RoutineStep {
+  id           String   @id @default(cuid())
+  routineId    String
+  moment       String // AM | PM | HAIR
+  order        Int
+  step         String
+  category     String
+  productId    String?
+  monthlyMad   Float    @default(0)
+  frequency    String
+  quantity     String?
+  introWeek    Int      @default(1)
+  alternatives Json? // { cheaper?: productId, natural?: ritualSlug }
+  routine      Routine  @relation(fields: [routineId], references: [id], onDelete: Cascade)
+
+  @@schema("care")
+}
+
+model RoutineCheck {
+  id        String   @id @default(cuid())
+  userId    String
+  day       String // YYYY-MM-DD
+  stepId    String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, day, stepId])
+  @@schema("care")
+}
+
+model SkinNote {
+  id        String   @id @default(cuid())
+  userId    String
+  kind      String // reaction | irritation | amelioration | note
+  text      String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@schema("care")
+}
+
+model CareLink {
+  id              String        @id @default(cuid())
+  patientId       String
+  dermatologistId String
+  status          String        @default("PENDING") // PENDING | ACTIVE | ENDED
+  reason          String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  patient         User          @relation("PatientLinks", fields: [patientId], references: [id], onDelete: Cascade)
+  dermatologist   Dermatologist @relation(fields: [dermatologistId], references: [id], onDelete: Cascade)
+
+  @@index([patientId])
+  @@index([dermatologistId])
+  @@schema("care")
+}
+
+model ClinicalNote {
+  id              String   @id @default(cuid())
+  patientId       String
+  dermatologistId String
+  text            String
+  recommendation  String?
+  createdAt       DateTime @default(now())
+  patient         User     @relation("PatientClinicalNotes", fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@schema("care")
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  patientId  String
+  channel    String // AI | CARE
+  senderRole String // PATIENT | DERMATOLOGIST | ASSISTANT
+  senderId   String?
+  content    String
+  kind       String   @default("text") // text | image | scan | routine
+  refId      String? // id de l'analyse partagée
+  attachment Bytes? // photo jointe (chiffrée au repos en production)
+  attachmentType String?
+  readAt     DateTime?
+  createdAt  DateTime @default(now())
+  patient    User     @relation("PatientMessages", fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, channel, createdAt])
+  @@schema("care")
+}

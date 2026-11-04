@@ -1,0 +1,14 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: dermora_db
+    environment:
+      POSTGRES_USER: dermora
+      POSTGRES_PASSWORD: dermora
+      POSTGRES_DB: dermora_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - dermora_pg:/var/lib/postgresql/data
+volumes:
+  dermora_pg:
