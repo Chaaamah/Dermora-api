@@ -1,3 +1,4 @@
+import { publicWebUrl } from '../common/i18n';
 import { Body, Controller, Delete, Get, Global, Injectable, Logger, Module, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import * as nodemailer from 'nodemailer';
@@ -38,7 +39,7 @@ export class PushService {
     if (!this.messaging) return;
     const tokens = await this.prisma.pushToken.findMany({ where: { userId } });
     if (!tokens.length) return;
-    const web = process.env.PUBLIC_WEB_URL ?? '';
+    const web = publicWebUrl();
     const res = await this.messaging.sendEachForMulticast({
       tokens: tokens.map((t) => t.token),
       notification: { title: n.title, body: n.body.slice(0, 180) },

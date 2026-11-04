@@ -7,8 +7,13 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix('v1', { exclude: ['docs', 'health'] });
-  const origins = (process.env.CORS_ORIGINS ?? 'http://localhost:3100').split(',').map((s) => s.trim());
-  app.enableCors({ origin: origins, credentials: true });
+  // Tolère les erreurs de saisie (<https://…>, guillemets, / final) ; « * » autorisé dans un motif (ex. https://dermora-*.vercel.app)
+  const clean = (s: string) => s.trim().replace(/^[<"'\s]+|[>"'\s]+$/g, '').replace(/\/+$/, '');
+  const allowed = (process.env.CORS_ORIGINS ?? 'http://localhost:3100').split(',').map(clean).filter(Boolean)
+    .map((o) => (o.includes('*') ? new RegExp(`^${o.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[a-z0-9-]+')}$`) : o));
+  app.enableCors({ origin: allowed, credentials: true });
+  // eslint-disable-next-line no-console
+  console.log(`CORS autorisé : ${allowed.map(String).join(', ')}`);
 
   const config = new DocumentBuilder()
     .setTitle('Dermora API')

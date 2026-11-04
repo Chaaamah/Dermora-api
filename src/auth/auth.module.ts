@@ -1,4 +1,5 @@
-import { BadRequestException, Body, ConflictException, Controller, HttpException, HttpStatus, Injectable, Module, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { publicWebUrl } from '../common/i18n';
+import { BadRequestException, Body, ConflictException, Controller, ForbiddenException, HttpException, HttpStatus, Injectable, Module, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtService } from '@nestjs/jwt';
 import { createHash, randomInt, randomBytes, scrypt as scryptCb, timingSafeEqual } from 'crypto';
@@ -25,6 +26,12 @@ export async function verifyPassword(pw: string, stored: string): Promise<boolea
 }
 
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
+
+const MAIL = {
+  fr: { subject: 'Dermora — activez votre compte', hello: 'Bonjour', body: 'Bienvenue sur Dermora ! Pour activer votre compte, cliquez sur le lien ci-dessous :', button: 'Activer mon compte', expires: 'Ce lien est valable 48 heures. Si vous n\'avez pas créé de compte, ignorez ce message.' },
+  en: { subject: 'Dermora — activate your account', hello: 'Hello', body: 'Welcome to Dermora! To activate your account, click the link below:', button: 'Activate my account', expires: 'This link is valid for 48 hours. If you did not create an account, ignore this message.' },
+  ar: { subject: 'ديرمورا — فعّلي حسابك', hello: 'مرحباً', body: 'مرحباً بك في ديرمورا! لتفعيل حسابك، اضغطي على الرابط أدناه:', button: 'تفعيل حسابي', expires: 'هذا الرابط صالح لمدة 48 ساعة. إذا لم تنشئي حساباً، تجاهلي هذه الرسالة.' },
+};
 const email = z.string().trim().toLowerCase().email('Adresse e-mail invalide');
 const password = z.string().min(8, '8 caractères minimum').max(128).regex(/[A-Za-z]/, 'Au moins une lettre').regex(/[0-9]/, 'Au moins un chiffre');
 
@@ -40,16 +47,58 @@ export class AuthService {
     };
   }
 
-  async register(b: { email: string; password: string; firstName: string; role: 'CLIENT' | 'DERMATOLOGIST' }) {
+  /** Compte créé non activé : un lien d'activation (48 h) est envoyé par e-mail. */
+  async register(b: { email: string; password: string; firstName: string; role: 'CLIENT' | 'DERMATOLOGIST'; lang?: string }) {
     if (await this.prisma.user.findUnique({ where: { email: b.email } })) throw new ConflictException('Un compte existe déjà avec cet e-mail.');
-    const user = await this.prisma.user.create({ data: { email: b.email, passwordHash: await hashPassword(b.password), firstName: b.firstName, role: b.role } });
-    return { ...this.tokens(user), user: { id: user.id, role: user.role } };
+    const token = randomBytes(32).toString('base64url');
+    const user = await this.prisma.user.create({
+      data: { email: b.email, passwordHash: await hashPassword(b.password), firstName: b.firstName, role: b.role, lang: b.lang ?? 'fr', verifyTokenHash: sha(token), verifyExpiresAt: new Date(Date.now() + 48 * 3600_000) },
+    });
+    return { needsVerification: true, email: user.email, ...(await this.sendVerification(user, token)) };
+  }
+
+  private async sendVerification(user: Pick<User, 'email' | 'firstName' | 'lang'>, token: string) {
+    const link = `${publicWebUrl()}/verify?token=${token}`;
+    const T = MAIL[user.lang === 'en' ? 'en' : user.lang === 'ar' ? 'ar' : 'fr'];
+    const dir = user.lang === 'ar' ? 'rtl' : 'ltr';
+    await this.mailer.send(
+      user.email!,
+      T.subject,
+      `${T.hello} ${user.firstName ?? ''},\n\n${T.body}\n${link}\n\n${T.expires}\n\nCare Beyond Beauty — Dermora`,
+      `<div dir="${dir}" style="font-family:Georgia,serif;color:#2a1820;max-width:520px"><h2 style="color:#7a1f3d">Dermora</h2><p>${T.hello} ${user.firstName ?? ''},</p><p>${T.body}</p><p><a href="${link}" style="display:inline-block;background:#7a1f3d;color:#fff;padding:12px 22px;border-radius:999px;text-decoration:none">${T.button}</a></p><p style="color:#8e7880;font-size:12px">${T.expires}<br>${link}</p></div>`,
+    );
+    // Développement sans SMTP : le lien est renvoyé pour pouvoir tester
+    return !this.mailer.configured && process.env.NODE_ENV !== 'production' ? { devLink: link } : {};
+  }
+
+  /** Active le compte à partir du lien reçu par e-mail, puis connecte l'utilisatrice. */
+  async verify(token: string) {
+    const user = await this.prisma.user.findFirst({ where: { verifyTokenHash: sha(token) } });
+    if (!user || !user.verifyExpiresAt || user.verifyExpiresAt < new Date()) throw new BadRequestException('Lien d\'activation expiré ou invalide. Demandez un nouveau lien.');
+    const updated = await this.prisma.user.update({ where: { id: user.id }, data: { emailVerifiedAt: new Date(), verifyTokenHash: null, verifyExpiresAt: null } });
+    return { ...this.tokens(updated), user: { id: updated.id, role: updated.role }, verified: true };
+  }
+
+  /** Renvoie un lien d'activation. Réponse identique que le compte existe ou non. */
+  async resendVerification(emailAddr: string) {
+    const generic = { sent: true, message: 'Si un compte non activé existe pour cette adresse, un nouveau lien vient d\'être envoyé.' };
+    const user = await this.prisma.user.findUnique({ where: { email: emailAddr } });
+    if (!user || !user.verifyTokenHash || user.emailVerifiedAt) return generic;
+    if (user.verifyExpiresAt && user.verifyExpiresAt.getTime() - (48 * 3600_000 - 60_000) > Date.now()) {
+      throw new HttpException('Un lien vient déjà d\'être envoyé. Patientez une minute.', HttpStatus.TOO_MANY_REQUESTS);
+    }
+    const token = randomBytes(32).toString('base64url');
+    await this.prisma.user.update({ where: { id: user.id }, data: { verifyTokenHash: sha(token), verifyExpiresAt: new Date(Date.now() + 48 * 3600_000) } });
+    return { ...generic, ...(await this.sendVerification(user, token)) };
   }
 
   async login(emailAddr: string, pw: string) {
     const user = await this.prisma.user.findUnique({ where: { email: emailAddr } });
     // Message identique que l'e-mail existe ou non (pas d'énumération de comptes)
     if (!user?.passwordHash || !(await verifyPassword(pw, user.passwordHash))) throw new UnauthorizedException('E-mail ou mot de passe incorrect.');
+    if (user.verifyTokenHash && !user.emailVerifiedAt) {
+      throw new ForbiddenException({ statusCode: 403, code: 'EMAIL_NOT_VERIFIED', message: 'Compte non activé : cliquez sur le lien reçu par e-mail.' });
+    }
     return { ...this.tokens(user), user: { id: user.id, role: user.role } };
   }
 
@@ -84,7 +133,7 @@ export class AuthService {
     }
     const updated = await this.prisma.user.update({
       where: { id: user.id },
-      data: { passwordHash: await hashPassword(newPassword), resetCodeHash: null, resetExpiresAt: null, resetAttempts: 0 },
+      data: { passwordHash: await hashPassword(newPassword), resetCodeHash: null, resetExpiresAt: null, resetAttempts: 0, ...(user.verifyTokenHash ? { emailVerifiedAt: new Date(), verifyTokenHash: null, verifyExpiresAt: null } : {}) },
     });
     return { ...this.tokens(updated), reset: true };
   }
@@ -113,8 +162,22 @@ export class AuthController {
 
   @Post('register')
   register(@Body() body: unknown) {
-    const b = parse(z.object({ email, password, firstName: z.string().trim().min(2).max(60), role: z.enum(['CLIENT', 'DERMATOLOGIST']).default('CLIENT') }), body);
-    return this.auth.register(b);
+    const b = parse(z.object({
+      email, password, passwordConfirm: z.string().optional(),
+      firstName: z.string().trim().min(2).max(60), role: z.enum(['CLIENT', 'DERMATOLOGIST']).default('CLIENT'), lang: z.enum(['fr', 'ar', 'en']).optional(),
+    }).refine((x) => x.passwordConfirm === undefined || x.passwordConfirm === x.password, { message: 'Les deux mots de passe ne correspondent pas.', path: ['passwordConfirm'] }), body);
+    const { passwordConfirm: _c, ...data } = b;
+    return this.auth.register(data);
+  }
+
+  @Post('verify')
+  verify(@Body() body: unknown) {
+    return this.auth.verify(parse(z.object({ token: z.string().min(20).max(200) }), body).token);
+  }
+
+  @Post('verify/resend')
+  resend(@Body() body: unknown) {
+    return this.auth.resendVerification(parse(z.object({ email }), body).email);
   }
 
   @Post('login')

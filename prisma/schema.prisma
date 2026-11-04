@@ -33,6 +33,11 @@ model User {
   resetCodeHash  String?
   resetExpiresAt DateTime?
   resetAttempts  Int     @default(0)
+  /// Activation par e-mail : un lien en attente (hash) bloque la connexion tant qu'il n'est pas utilisé.
+  /// Les comptes créés avant cette fonctionnalité n'ont pas de lien en attente : ils restent actifs.
+  verifyTokenHash String?
+  verifyExpiresAt DateTime?
+  emailVerifiedAt DateTime?
   firstName  String?
   lang       String    @default("fr")
   city       String?
@@ -57,6 +62,7 @@ model User {
   reminderLogs  ReminderLog[]
   pushTokens    PushToken[]
 
+  @@index([verifyTokenHash])
   @@schema("app")
 }
 

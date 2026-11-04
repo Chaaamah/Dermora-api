@@ -8,7 +8,7 @@ services:
     dockerfilePath: ./Dockerfile
     region: frankfurt
     plan: free               # passer à « starter » en production (pas de mise en veille)
-    healthCheckPath: /v1/health
+    healthCheckPath: /health
     autoDeploy: true
     envVars:
       - key: NODE_ENV

@@ -36,3 +36,6 @@ export function trs(fr: string, lang?: string | null, vars?: Record<string, stri
   if (vars) for (const [k, v] of Object.entries(vars)) out = out.split('{' + k + '}').join(String(v));
   return out;
 }
+
+/** Adresse publique du site, tolérante aux erreurs de saisie (<https://…>, guillemets, / final). */
+export const publicWebUrl = () => (process.env.PUBLIC_WEB_URL ?? 'http://localhost:3100').trim().replace(/^[<"'\s]+|[>"'\s]+$/g, '').replace(/\/+$/, '');
