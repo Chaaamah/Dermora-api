@@ -45,7 +45,7 @@ export class RoutineEngine {
     return true;
   }
 
-  private score(p: FullProduct, concerns: string[], skin: SkinProfile | null, hair: HairProfile | null): number {
+  score(p: FullProduct, concerns: string[], skin: SkinProfile | null, hair: HairProfile | null): number {
     let s = p.concerns.filter((c) => concerns.includes(c)).length * 3;
     if (p.domain === 'skin' && skin && p.skinTypes.includes(skin.skinType)) s += 2;
     if (p.domain === 'hair' && hair && p.skinTypes.includes(hair.curlType)) s += 2;

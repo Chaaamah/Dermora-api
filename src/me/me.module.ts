@@ -111,7 +111,7 @@ export class MeController {
   async export(@CurrentUser() u: AuthUser) {
     const data = await this.prisma.user.findUniqueOrThrow({
       where: { id: u.id },
-      include: { consents: true, skinProfile: true, hairProfile: true, scans: true, routines: { include: { steps: true } }, checks: true, notes: true, favorites: true, messages: true, careLinks: true, clinicalNotes: true },
+      include: { consents: true, skinProfile: true, hairProfile: true, scans: true, routines: { include: { steps: true } }, checks: true, notes: true, favorites: true, messages: true, careLinks: true, clinicalNotes: true, productChecks: true },
     });
     return { exportedAt: new Date().toISOString(), data };
   }

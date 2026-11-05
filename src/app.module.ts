@@ -8,6 +8,7 @@ import { RoutinesModule } from './routines/routines.module';
 import { CareModule } from './care/care.module';
 import { ProModule } from './pro/pro.module';
 import { AssistantModule } from './assistant/assistant.module';
+import { CheckerModule } from './checker/checker.module';
 import { AdminModule } from './admin/admin.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { MessagingModule } from './messaging/messaging.service';
@@ -23,7 +24,7 @@ class HealthController {
 }
 
 @Module({
-  imports: [CommonModule, NotificationsModule, MessagingModule, AdsModule, RemindersModule, AuthModule, MeModule, CatalogModule, ScansModule, RoutinesModule, CareModule, ProModule, AssistantModule, AdminModule],
+  imports: [CommonModule, NotificationsModule, MessagingModule, AdsModule, RemindersModule, AuthModule, MeModule, CatalogModule, ScansModule, RoutinesModule, CareModule, ProModule, AssistantModule, AdminModule, CheckerModule],
   controllers: [HealthController],
 })
 export class AppModule {}

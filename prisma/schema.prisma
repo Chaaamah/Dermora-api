@@ -61,6 +61,7 @@ model User {
   reminderSettings ReminderSettings?
   reminderLogs  ReminderLog[]
   pushTokens    PushToken[]
+  productChecks ProductCheck[]
 
   @@index([verifyTokenHash])
   @@schema("app")
@@ -527,5 +528,26 @@ model ReminderLog {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, day, stepId])
+  @@schema("care")
+}
+
+/// « Mes produits » : produits que l'utilisatrice utilise déjà, analysés selon son profil
+model ProductCheck {
+  id              String   @id @default(cuid())
+  userId          String
+  barcode         String?
+  productId       String?
+  brand           String?
+  name            String
+  category        String
+  imageUrl        String?
+  ingredientsText String?
+  source          String   @default("manual") // barcode | photo | catalog | manual
+  verdict         String // adapte | surveiller | deconseille | inconnu
+  result          Json
+  createdAt       DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
   @@schema("care")
 }
