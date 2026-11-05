@@ -102,7 +102,8 @@ export class RemindersService implements OnApplicationBootstrap, OnModuleDestroy
           if (minutes < p.minutes || minutes > p.minutes + LATE_WINDOW_MIN) continue;
           const created = await this.prisma.reminderLog.create({ data: { userId: st.userId, day, stepId: p.stepId } }).catch(() => null);
           if (!created) continue; // déjà envoyé par une autre instance
-          await this.notifications.notify(st.userId, { type: 'reminder', title: p.title, body: p.body, link: '/app' });
+          // Sur mobile, les rappels sont programmés localement (hors ligne) : push uniquement vers le navigateur
+          await this.notifications.notify(st.userId, { type: 'reminder', title: p.title, body: p.body, link: '/app' }, { pushPlatforms: ['web'] });
           sent++;
         }
       }

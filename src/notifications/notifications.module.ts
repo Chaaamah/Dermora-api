@@ -6,6 +6,8 @@ import { PrismaService } from '../common/common.module';
 import { AuthGuard, AuthUser, CurrentUser, parse, z } from '../common/auth';
 
 export interface NotifyInput { type: string; title: string; body: string; link?: string }
+/** Plateformes qui reçoivent le push (par défaut : toutes). */
+export interface NotifyOptions { pushPlatforms?: Array<'web' | 'android' | 'ios'> }
 
 /**
  * Notifications push via Firebase Cloud Messaging (web et mobile).
@@ -35,9 +37,9 @@ export class PushService {
 
   get configured() { return !!this.messaging; }
 
-  async send(userId: string, n: NotifyInput) {
+  async send(userId: string, n: NotifyInput, opts: NotifyOptions = {}) {
     if (!this.messaging) return;
-    const tokens = await this.prisma.pushToken.findMany({ where: { userId } });
+    const tokens = await this.prisma.pushToken.findMany({ where: { userId, ...(opts.pushPlatforms ? { platform: { in: opts.pushPlatforms } } : {}) } });
     if (!tokens.length) return;
     const web = publicWebUrl();
     const res = await this.messaging.sendEachForMulticast({
@@ -57,9 +59,9 @@ export class PushService {
 export class NotificationsService {
   constructor(private prisma: PrismaService, private push: PushService) {}
 
-  async notify(userId: string, n: NotifyInput) {
+  async notify(userId: string, n: NotifyInput, opts: NotifyOptions = {}) {
     const created = await this.prisma.notification.create({ data: { userId, ...n, body: n.body.slice(0, 280) } }).catch(() => undefined);
-    void this.push.send(userId, n).catch(() => undefined);
+    void this.push.send(userId, n, opts).catch(() => undefined);
     return created;
   }
 }
