@@ -3,7 +3,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { PrismaService } from '../common/common.module';
 import { AuthGuard, AuthUser, CurrentUser, ageFrom, parse } from '../common/auth';
 import { safetyAlert } from '../common/safety';
-import { OnDeviceScanZ, scoreScan, summarize } from './providers';
+import { AnalysisResult, OnDeviceScanZ, estimateSkinType, scoreScan, summarize } from './providers';
 
 const FREE_SCANS_PER_MONTH = Number(process.env.FREE_SCANS_PER_MONTH ?? 10);
 export const COSMETIC_NOTICE = 'Analyse cosmétique, pas un avis médical.';
@@ -13,6 +13,13 @@ export function localized(s: { summary: string[]; results: unknown }, lang?: str
   const r = s.results as { zones?: unknown; concerns?: unknown } | null;
   if (!r?.zones || !r?.concerns) return s.summary;
   try { return summarize(r as Parameters<typeof summarize>[0], lang ?? 'fr'); } catch { return s.summary; }
+}
+
+/** Anciennes analyses : type de peau recalculé à partir des mesures enregistrées. */
+function withSkinType<T extends { results: unknown }>(s: T, declared?: string | null): T {
+  const r = s.results as Partial<AnalysisResult> | null;
+  if (!r || r.skinType || !r.metrics || !r.concerns) return s;
+  try { return { ...s, results: { ...r, skinType: estimateSkinType(r.metrics, r.concerns, declared) } }; } catch { return s; }
 }
 
 @ApiTags('Diagnostic')
@@ -50,17 +57,17 @@ export class ScansController {
   async list(@CurrentUser() u: AuthUser) {
     const [scans, me] = await Promise.all([
       this.prisma.scan.findMany({ where: { userId: u.id }, orderBy: { createdAt: 'desc' } }),
-      this.prisma.user.findUnique({ where: { id: u.id }, select: { lang: true } }),
+      this.prisma.user.findUnique({ where: { id: u.id }, select: { lang: true, skinProfile: { select: { skinType: true } } } }),
     ]);
-    return scans.map((s) => ({ ...s, summary: localized(s, me?.lang), notice: COSMETIC_NOTICE }));
+    return scans.map((s) => ({ ...withSkinType(s, me?.skinProfile?.skinType), summary: localized(s, me?.lang), notice: COSMETIC_NOTICE }));
   }
 
   @Get(':id')
   async one(@CurrentUser() u: AuthUser, @Param('id') id: string) {
     const s = await this.prisma.scan.findFirst({ where: { id, userId: u.id } });
     if (!s) throw new NotFoundException();
-    const me = await this.prisma.user.findUnique({ where: { id: u.id }, select: { lang: true } });
-    return { ...s, summary: localized(s, me?.lang), notice: COSMETIC_NOTICE };
+    const me = await this.prisma.user.findUnique({ where: { id: u.id }, select: { lang: true, skinProfile: { select: { skinType: true } } } });
+    return { ...withSkinType(s, me?.skinProfile?.skinType), summary: localized(s, me?.lang), notice: COSMETIC_NOTICE };
   }
 }
 

@@ -1,5 +1,5 @@
 {
-  "collectedAt": "2026-11-04T15:12:11.210Z",
+  "collectedAt": "2026-11-05T13:57:30.712Z",
   "sites": [
     {
       "id": "monpara",
@@ -678,7 +678,8 @@
           "inStock": true,
           "image": "https://atelierpara.ma/images/2026/06/product_30573.jpg"
         }
-      ]
+      ],
+      "origin": "KR"
     },
     {
       "key": "revox-just-retinol-niacinamide-30",
@@ -2567,6 +2568,1217 @@
           "currency": "MAD",
           "inStock": true,
           "image": "https://atelierpara.ma/images/2026/06/product_15900.jpg"
+        }
+      ]
+    },
+    {
+      "origin": "KR",
+      "key": "cosrx-salicylic-cleanser-150",
+      "brand": "COSRX",
+      "name": "Salicylic Acid Daily Gentle Cleanser",
+      "category": "cleanser",
+      "size": 150,
+      "months": 2.5,
+      "types": [
+        "grasse",
+        "mixte"
+      ],
+      "concerns": [
+        "acne",
+        "pores"
+      ],
+      "avoid": [
+        "pregnancy"
+      ],
+      "ings": [
+        "SALICYLIC ACID"
+      ],
+      "desc": "Nettoyant moussant doux coréen à l’acide salicylique, désobstrue les pores sans tirailler. Peaux grasses à imperfections.",
+      "how": "Matin et soir, faire mousser sur peau humide, masser 30 secondes, rincer.",
+      "prec": "Contient de l’acide salicylique : demander l’avis d’un professionnel pendant la grossesse.",
+      "must": [
+        "cosrx",
+        "nettoyant doux",
+        "150"
+      ],
+      "not": [],
+      "image": "https://atelierpara.ma/images/2026/06/product_30552.jpg",
+      "offers": [
+        {
+          "site": "atelierpara",
+          "externalId": 57091,
+          "title": "COSRX NETTOYANT DOUX A L’ACIDE SALYCILIQUE 150ML",
+          "url": "https://atelierpara.ma/produit/cosrx-nettoyant-doux-a-lacide-salycilique-150-ml/",
+          "priceMad": 193.05,
+          "regularMad": 292.5,
+          "currency": "MAD",
+          "inStock": true,
+          "image": "https://atelierpara.ma/images/2026/06/product_30552.jpg"
+        }
+      ]
+    },
+    {
+      "origin": "KR",
+      "key": "anua-quercetinol-foam-150",
+      "brand": "Anua",
+      "name": "Heartleaf Quercetinol Pore Deep Cleansing Foam",
+      "category": "cleanser",
+      "size": 150,
+      "months": 2.5,
+      "types": [
+        "grasse",
+        "mixte",
+        "normale"
+      ],
+      "concerns": [
+        "pores",
+        "acne"
+      ],
+      "ings": [
+        "HOUTTUYNIA CORDATA EXTRACT"
+      ],
+      "desc": "Mousse nettoyante à l’extrait de heartleaf (houttuynia), nettoie les pores en profondeur tout en apaisant.",
+      "how": "Matin et soir sur peau humide, faire mousser, rincer.",
+      "must": [
+        "anua",
+        "quercetinol",
+        "150"
+      ],
+      "not": [],
+      "image": "https://atelierpara.ma/images/2026/06/product_30572.jpg",
+      "offers": [
+        {
+          "site": "atelierpara",
+          "externalId": 57222,
+          "title": "ANUA HEARTLEAF QUERCETINOL PORE DEEP CLEANSING FOAM 150ML",
+          "url": "https://atelierpara.ma/produit/anua-heartleaf-quercetinol-pore-deep-cleansing-foam-150ml/",
+          "priceMad": 219,
+          "regularMad": 328.5,
+          "currency": "MAD",
+          "inStock": true,
+          "image": "https://atelierpara.ma/images/2026/06/product_30572.jpg"
+        },
+        {
+          "site": "parachezvous",
+          "externalId": 165878,
+          "title": "ANUA – Heartleaf Quercetinol Pore Deep Cleansing Foam – 150ml",
+          "url": "https://parachezvous.ma/product/anua-heartleaf-quercetinol-pore-deep-cleansing-foam-150ml/",
+          "priceMad": 211,
+          "regularMad": 319,
+          "currency": "MAD",
+          "inStock": false,
+          "image": "https://parachezvous.ma/wp-content/uploads/2025/10/anua-heartleaf-quercetinol-pore-deep-cleansing-foam-150ml.webp"
+        }
+      ]
+    },
+    {
+      "origin": "KR",
+      "key": "anua-succinic-foam-150",
+      "brand": "Anua",
+      "name": "Heartleaf Succinic Moisture Cleansing Foam",
+      "category": "cleanser",
+      "size": 150,
+      "months": 2.5,
+      "types": [
+        "all"
+      ],
+      "concerns": [
+        "acne",
+        "secheresse"
+      ],
+      "ings": [
+        "HOUTTUYNIA CORDATA EXTRACT",
+        "SODIUM HYALURONATE"
+      ],
+      "desc": "Mousse nettoyante douce et hydratante à l’acide succinique et au heartleaf, pour peaux sensibles à imperfections.",
+      "how": "Matin et soir sur peau humide, faire mousser, rincer.",
+      "must": [
+        "anua",
+        "succinic",
+        "150"
+      ],
+      "not": [],
+      "image": "https://atelierpara.ma/images/2026/09/product_41706.webp",
+      "offers": [
+        {
+          "site": "atelierpara",
+          "externalId": 73058,
+          "title": "ANUA HEARTLEAF + SUCCINIC ACID MOISTURE FOAM 150ML",
+          "url": "https://atelierpara.ma/produit/anua-heartleaf-succinic-acid-moisture-foam-150ml/",
+          "priceMad": 199,
+          "regularMad": 199,
+          "currency": "MAD",
+          "inStock": true,
+          "image": "https://atelierpara.ma/images/2026/09/product_41706.webp"
+        },
+        {
+          "site": "parachezvous",
+          "externalId": 165880,
+          "title": "ANUA – Heartleaf Succinic Moisture Cleansing Foam – 150ml",
+          "url": "https://parachezvous.ma/product/anua-heartleaf-succinic-moisture-cleansing-foam-150ml/",
+          "priceMad": 199,
+          "regularMad": 299,
+          "currency": "MAD",
+          "inStock": false,
+          "image": "https://parachezvous.ma/wp-content/uploads/2025/10/anua-heartleaf-succinic-moisture-cleansing-foam-150ml.webp"
+        }
+      ]
+    },
+    {
+      "origin": "KR",
+      "key": "torriden-dive-in-foam-150",
+      "brand": "Torriden",
+      "name": "Dive-In Cleansing Foam",
+      "category": "cleanser",
+      "size": 150,
+      "months": 2.5,
+      "types": [
+        "seche",
+        "normale",
+        "mixte"
+      ],
+      "concerns": [
+        "secheresse"
+      ],
+      "ings": [
+        "SODIUM HYALURONATE"
+      ],
+      "desc": "Mousse nettoyante douce à l’acide hyaluronique de faible poids moléculaire, nettoie sans dessécher.",
+      "how": "Matin et soir sur peau humide, faire mousser, rincer.",
+      "must": [
+        "torriden",
+        "cleansing foam",
+        "150"
+      ],
+      "not": [],
+      "image": "https://atelierpara.ma/images/2026/10/product_41682.jpg",
+      "offers": [
+        {
+          "site": "atelierpara",
+          "externalId": 72833,
+          "title": "TORRIDEN DIVE IN CLEANSING FOAM 150ML",
+          "url": "https://atelierpara.ma/produit/torriden-dive-in-cleansing-foam-150ml/",
+          "priceMad": 205,
+          "regularMad": 205,
+          "currency": "MAD",
+          "inStock": true,
+          "image": "https://atelierpara.ma/images/2026/10/product_41682.jpg"
+        }
+      ]
+    },
+    {
+      "origin": "KR",
+      "key": "skin1004-centella-ampoule-foam-125",
+      "brand": "SKIN1004",
+      "name": "Madagascar Centella Ampoule Foam",
+      "category": "cleanser",
+      "size": 125,
+      "months": 2,
+      "types": [
+        "all"
+      ],
+      "concerns": [
+        "rougeurs"
+      ],
+      "ings": [
+        "CENTELLA ASIATICA EXTRACT"
+      ],
+      "desc": "Mousse nettoyante à la centella de Madagascar, au pH doux, pour les peaux sensibles et réactives.",
+      "how": "Matin et soir, faire mousser sur peau humide, rincer.",
+      "must": [
+        "skin1004",
+        "ampoule foam",
+        "125"
+      ],
+      "not": [],
+      "image": "https://atelierpara.ma/images/2026/06/product_30565.jpg",
+      "offers": [
+        {
+          "site": "atelierpara",
+          "externalId": 57075,
+          "title": "SKIN1004 MADAGASCAR CENTELLA AMPOULE FOAM 125ML",
+          "url": "https://atelierpara.ma/produit/skin1004-madagascar-centella-ampoule-foam-125-ml/",
+          "priceMad": 260,
+          "regularMad": 390,
+          "currency": "MAD",
+          "inStock": true,
+          "image": "https://atelierpara.ma/images/2026/06/product_30565.jpg"
+        }
+      ]
+    },
+    {
+      "origin": "KR",
+      "key": "joseon-ginseng-cleansing-oil-210",
+      "brand": "Beauty of Joseon",
+      "name": "Ginseng Cleansing Oil",
+      "category": "cleanser",
+      "size": 210,
+      "months": 3,
+      "types": [
+        "all"
+      ],
+      "concerns": [
+        "secheresse",
+        "eclat"
+      ],
+      "ings": [
+        "PANAX GINSENG ROOT EXTRACT"
+      ],
+      "desc": "Huile démaquillante au ginseng : retire maquillage et écran solaire, premier temps du double nettoyage coréen.",
+      "how": "Le soir, masser sur peau sèche, émulsionner avec un peu d’eau, rincer, puis utiliser le nettoyant habituel.",
+      "must": [
+        "joseon",
+        "cleansing oil",
+        "210"
+      ],
+      "not": [],
+      "image": "https://parachezvous.ma/wp-content/uploads/2025/09/beauty-of-joseon-ginseng-cleansing-oil-210ml.webp",
+      "offers": [
+        {
+          "site": "parachezvous",
+          "externalId": 163696,
+          "title": "BEAUTY OF JOSEON – Ginseng Cleansing Oil – 210ml",
+          "url": "https://parachezvous.ma/product/beauty-of-joseon-ginseng-cleansing-oil-210ml/",
+          "priceMad": 259,
+          "regularMad": 389,
+          "currency": "MAD",
+          "inStock": true,
+          "image": "https://parachezvous.ma/wp-content/uploads/2025/09/beauty-of-joseon-ginseng-cleansing-oil-210ml.webp"
+        }
+      ]
+    },
+    {
+      "origin": "KR",
+      "key": "cosrx-snail-96-essence-100",
+      "brand": "COSRX",
+      "name": "Advanced Snail 96 Mucin Power Essence",
+      "category": "serum",
+      "size": 100,
+      "months": 3,
+      "types": [
+        "all"
+      ],
+      "concerns": [
+        "secheresse",
+        "eclat",
+        "acne"
+      ],
+      "ings": [
+        "SNAIL SECRETION FILTRATE",
+        "SODIUM HYALURONATE"
+      ],
+      "desc": "Essence culte à 96 % de mucine d’escargot : hydrate, répare et aide à estomper les marques d’imperfections.",
+      "how": "Matin et soir après le nettoyage, tapoter quelques gouttes avant la crème.",
+      "must": [
+        "cosrx",
+        "snail",
+        "essence",
+        "100"
+      ],
+      "not": [
+        "radiance",
+        "dual"
+      ],
+      "image": "https://atelierpara.ma/images/2026/06/product_40384.webp",
+      "offers": [
+        {
+          "site": "atelierpara",
+          "externalId": 67732,
+          "title": "COSRX ADVANCED SNAIL MUCIN POWER ESSENCE 100ML",
+          "url": "https://atelierpara.ma/produit/cosrx-advanced-snail-mucin-power-essence-100ml/",
+          "priceMad": 246.51,
+          "regularMad": 373.5,
+          "currency": "MAD",
+          "inStock": true,
+          "image": "https://atelierpara.ma/images/2026/06/product_40384.webp"
+        }
+      ]
+    },
+    {
+      "origin": "KR",
+      "key": "cosrx-niacinamide-15-serum-20",
+      "brand": "COSRX",
+      "name": "The Niacinamide 15 Serum",
+      "category": "serum",
+      "size": 20,
+      "months": 1.5,
+      "types": [
+        "grasse",
+        "mixte",
+        "normale"
+      ],
+      "concerns": [
+        "pores",
+        "taches",
+        "acne"
+      ],
+      "ings": [
+        "NIACINAMIDE",
+        "ZINC PCA"
+      ],
+      "desc": "Sérum concentré à 15 % de niacinamide et zinc PCA : régule le sébum, resserre les pores et unifie le teint.",
+      "how": "Le soir (ou matin et soir si bien toléré), 2 à 3 gouttes avant la crème.",
+      "must": [
+        "cosrx",
+        "niacinamide",
+        "20"
+      ],
+      "not": [],
+      "image": "https://atelierpara.ma/images/2026/06/product_40146.webp",
+      "offers": [
+        {
+          "site": "atelierpara",
+          "externalId": 60087,
+          "title": "COSRX THE NIACINAMIDE 15 SERUM 20ML //",
+          "url": "https://atelierpara.ma/produit/cosrx-the-niacinamide-15-serum-20-ml/",
+          "priceMad": 287.1,
+          "regularMad": 435,
+          "currency": "MAD",
+          "inStock": true,
+          "image": "https://atelierpara.ma/images/2026/06/product_40146.webp"
+        }
+      ]
+    },
+    {
+      "origin": "KR",
+      "key": "joseon-glow-serum-propolis-30",
+      "brand": "Beauty of Joseon",
+      "name": "Glow Serum Propolis + Niacinamide",
+      "category": "serum",
+      "size": 30,
+      "months": 2,
+      "types": [
+        "grasse",
+        "mixte",
+        "normale"
+      ],
+      "concerns": [
+        "acne",
+        "eclat",
+        "pores"
+      ],
+      "ings": [
+        "PROPOLIS EXTRACT",
+        "NIACINAMIDE"
+      ],
+      "desc": "Sérum à 60 % de propolis et niacinamide : apaise les imperfections et donne de l’éclat.",
+      "how": "Matin et soir après le nettoyage, avant la crème.",
+      "prec": "Déconseillé en cas d’allergie aux produits de la ruche.",
+      "must": [
+        "joseon",
+        "propolis",
+        "30"
+      ],
+      "not": [],
+      "image": "https://atelierpara.ma/images/2026/06/product_40804-1.webp",
+      "offers": [
+        {
+          "site": "atelierpara",
+          "externalId": 67218,
+          "title": "BEAUTY OF JOSEON GLOW SERUM PROPOLIS + NIACINAMIDE 30ML",
+          "url": "https://atelierpara.ma/produit/beauty-of-joseon-glow-serum-propolis-niacinamide-30ml/",
+          "priceMad": 246.51,
+          "regularMad": 373.5,
+          "currency": "MAD",
+          "inStock": true,
+          "image": "https://atelierpara.ma/images/2026/06/product_40804-1.webp"
+        },
+        {
+          "site": "parachezvous",
+          "externalId": 108664,
+          "title": "BEAUTY OF JOSEON – Serum Eclat Propolis et Niacinamide – 30ml",
+          "url": "https://parachezvous.ma/product/beauty-of-joseon-serum-eclat-propolis-niacinamide-30ml/",
+          "priceMad": 239,
+          "regularMad": 359,
+          "currency": "MAD",
+          "inStock": true,
+          "image": "https://parachezvous.ma/wp-content/uploads/2024/08/beauty-of-joseon-serum-eclat-propolis-et-niacinamide-30ml.jpg"
+        }
+      ]
+    },
+    {
+      "origin": "KR",
+      "key": "joseon-glow-deep-serum-30",
+      "brand": "Beauty of Joseon",
+      "name": "Glow Deep Serum Rice + Alpha-Arbutin",
+      "category": "serum",
+      "size": 30,
+      "months": 2,
+      "types": [
+        "all"
+      ],
+      "concerns": [
+        "taches",
+        "eclat"
+      ],
+      "ings": [
+        "ORYZA SATIVA (RICE) BRAN WATER",
+        "ALPHA-ARBUTIN",
+        "NIACINAMIDE"
+      ],
+      "desc": "Sérum éclat au riz et à l’alpha-arbutine, cible les taches pigmentaires et le teint terne.",
+      "how": "Matin et soir avant la crème ; protection solaire le matin.",
+      "must": [
+        "joseon",
+        "glow deep",
+        "30"
+      ],
+      "not": [],
+      "image": "https://atelierpara.ma/images/2026/06/product_30578.jpg",
+      "offers": [
+        {
+          "site": "atelierpara",
+          "externalId": 57085,
+          "title": "BEAUTY OF JOSEON GLOW DEEP SERUM 30ML",
+          "url": "https://atelierpara.ma/produit/beauty-of-joseon-glow-deep-serum-30-ml/",
+          "priceMad": 236.61,
+          "regularMad": 358.5,
+          "currency": "MAD",
+          "inStock": true,
+          "image": "https://atelierpara.ma/images/2026/06/product_30578.jpg"
+        },
+        {
+          "site": "parachezvous",
+          "externalId": 163699,
+          "title": "BEAUTY OF JOSEON – Glow Deep Serum Rice+Alpha-Arbutin – 30ml",
+          "url": "https://parachezvous.ma/product/beauty-of-joseon-glow-deep-serum-ricealpha-arbutin-30ml/",
+          "priceMad": 239,
+          "regularMad": 359,
+          "currency": "MAD",
+          "inStock": true,
+          "image": "https://parachezvous.ma/wp-content/uploads/2025/09/beauty-of-joseon-glow-deep-serum-ricealpha-arbutin-30ml.webp"
+        }
+      ]
+    },
+    {
+      "origin": "KR",
+      "key": "joseon-calming-serum-30",
+      "brand": "Beauty of Joseon",
+      "name": "Calming Serum Green Tea + Panthenol",
+      "category": "serum",
+      "size": 30,
+      "months": 2,
+      "types": [
+        "all"
+      ],
+      "concerns": [
+        "rougeurs",
+        "secheresse"
+      ],
+      "ings": [
+        "CAMELLIA SINENSIS LEAF EXTRACT",
+        "PANTHENOL"
+      ],
+      "desc": "Sérum apaisant au thé vert et au panthénol pour les peaux sensibles, rouges ou fragilisées.",
+      "how": "Matin et soir après le nettoyage, avant la crème.",
+      "must": [
+        "joseon",
+        "calming",
+        "30"
+      ],
+      "not": [],
+      "image": "https://parachezvous.ma/wp-content/uploads/2026/01/beauty-of-joseon-calming-serum-green-teapanthenol-30ml.jpg",
+      "offers": [
+        {
+          "site": "parachezvous",
+          "externalId": 177257,
+          "title": "BEAUTY OF JOSEON – Calming Serum Green Tea+Panthenol – 30Ml",
+          "url": "https://parachezvous.ma/product/beauty-of-joseon-calming-serum-green-teapanthenol-30ml/",
+          "priceMad": 239,
+          "regularMad": 359,
+          "currency": "MAD",
+          "inStock": true,
+          "image": "https://parachezvous.ma/wp-content/uploads/2026/01/beauty-of-joseon-calming-serum-green-teapanthenol-30ml.jpg"
+        }
+      ]
+    },
+    {
+      "origin": "KR",
+      "key": "skin1004-centella-ampoule-30",
+      "brand": "SKIN1004",
+      "name": "Madagascar Centella Ampoule",
+      "category": "serum",
+      "size": 30,
+      "months": 1.5,
+      "types": [
+        "all"
+      ],
+      "concerns": [
+        "rougeurs",
+        "acne"
+      ],
+      "ings": [
+        "CENTELLA ASIATICA EXTRACT"
+      ],
+      "desc": "Ampoule à 100 % d’extrait de centella asiatica de Madagascar : apaise rougeurs et irritations.",
+      "how": "Matin et soir, quelques gouttes sur peau propre, avant la crème.",
+      "must": [
+        "skin1004",
+        "centella ampoule",
+        "30"
+      ],
+      "not": [
+        "foam",
+        "capsule",
+        "brightening"
+      ],
+      "image": "https://atelierpara.ma/images/2026/06/product_30563.jpg",
+      "offers": [
+        {
+          "site": "atelierpara",
+          "externalId": 59557,
+          "title": "SKIN1004 MADAGASCAR CENTELLA AMPOULE 30ML",
+          "url": "https://atelierpara.ma/produit/skin1004-madagascar-centella-ampoule-30ml/",
+          "priceMad": 140,
+          "regularMad": 210,
+          "currency": "MAD",
+          "inStock": true,
+          "image": "https://atelierpara.ma/images/2026/06/product_30563.jpg"
+        }
+      ]
+    },
+    {
+      "origin": "KR",
+      "key": "anua-azelaic-serum-30",
+      "brand": "Anua",
+      "name": "Azelaic Acid 10 + Hyaluron Redness Soothing Serum",
+      "category": "serum",
+      "size": 30,
+      "months": 2,
+      "types": [
+        "all"
+      ],
+      "concerns": [
+        "rougeurs",
+        "acne",
+        "taches"
+      ],
+      "ings": [
+        "AZELAIC ACID",
+        "SODIUM HYALURONATE"
+      ],
+      "desc": "Sérum à 10 % d’acide azélaïque et acide hyaluronique : réduit rougeurs, imperfections et marques.",
+      "how": "Le soir au début, puis matin et soir selon la tolérance. Protection solaire le matin.",
+      "must": [
+        "anua",
+        "azelaic",
+        "30"
+      ],
+      "not": [],
+      "image": "https://parachezvous.ma/wp-content/uploads/2026/01/anua-azelaic-acid-10-hyaluronic-serum-30ml.jpg",
+      "offers": [
+        {
+          "site": "parachezvous",
+          "externalId": 177225,
+          "title": "ANUA – Azelaic Acid 10 Hyaluronic Serum – 30Ml",
+          "url": "https://parachezvous.ma/product/anua-azelaic-acid-10-hyaluronic-serum-30ml/",
+          "priceMad": 279,
+          "regularMad": 419,
+          "currency": "MAD",
+          "inStock": false,
+          "image": "https://parachezvous.ma/wp-content/uploads/2026/01/anua-azelaic-acid-10-hyaluronic-serum-30ml.jpg"
+        }
+      ]
+    },
+    {
+      "origin": "KR",
+      "key": "torriden-dive-in-serum-50",
+      "brand": "Torriden",
+      "name": "Dive-In Low Molecular Hyaluronic Acid Serum",
+      "category": "serum",
+      "size": 50,
+      "months": 2.5,
+      "types": [
+        "all"
+      ],
+      "concerns": [
+        "secheresse",
+        "rides"
+      ],
+      "ings": [
+        "SODIUM HYALURONATE",
+        "PANTHENOL"
+      ],
+      "desc": "Sérum à 5 acides hyaluroniques de tailles différentes : hydratation intense et effet repulpant, texture légère.",
+      "how": "Matin et soir sur peau propre, avant la crème.",
+      "must": [
+        "torriden",
+        "hyaluronic",
+        "50"
+      ],
+      "not": [],
+      "image": "https://atelierpara.ma/images/2026/10/product_41688-1.webp",
+      "offers": [
+        {
+          "site": "atelierpara",
+          "externalId": 72839,
+          "title": "TORRIDEN DIVE IN ACID HYALURONIC SERUM 50ML",
+          "url": "https://atelierpara.ma/produit/torriden-dive-in-acid-hyaluronic-serum-50ml/",
+          "priceMad": 289,
+          "regularMad": 289,
+          "currency": "MAD",
+          "inStock": true,
+          "image": "https://atelierpara.ma/images/2026/10/product_41688-1.webp"
+        }
+      ]
+    },
+    {
+      "origin": "KR",
+      "key": "cosrx-retinol-03-cream-20",
+      "brand": "COSRX",
+      "name": "The Retinol 0.3 Cream",
+      "category": "treatment",
+      "size": 20,
+      "months": 2,
+      "types": [
+        "normale",
+        "mixte",
+        "grasse"
+      ],
+      "concerns": [
+        "rides",
+        "eclat",
+        "pores"
+      ],
+      "avoid": [
+        "pregnancy",
+        "sensitive"
+      ],
+      "ings": [
+        "RETINOL",
+        "PANTHENOL"
+      ],
+      "desc": "Crème au rétinol 0,3 %, vitamine E et panthénol pour lisser la texture et les ridules.",
+      "how": "Le soir, 2 à 3 fois par semaine au début, une noisette sur peau sèche.",
+      "prec": "Rétinoïde : jamais pendant la grossesse ou l’allaitement. Protection solaire indispensable.",
+      "must": [
+        "cosrx",
+        "retinol",
+        "20"
+      ],
+      "not": [],
+      "image": "https://atelierpara.ma/images/2026/06/product_40147.png",
+      "offers": [
+        {
+          "site": "atelierpara",
+          "externalId": 60099,
+          "title": "COSRX THE RETINOL 0.3 SUPER VITAMINE E + PANTHENOL CREAM 20ML",
+          "url": "https://atelierpara.ma/produit/cosrx-the-retinol-0-3-super-vitamine-e-panthenol-cream-20ml/",
+          "priceMad": 282.15,
+          "regularMad": 427.5,
+          "currency": "MAD",
+          "inStock": true,
+          "image": "https://atelierpara.ma/images/2026/06/product_40147.png"
+        }
+      ]
+    },
+    {
+      "origin": "KR",
+      "key": "cosrx-snail-92-cream-100",
+      "brand": "COSRX",
+      "name": "Advanced Snail 92 All in One Cream",
+      "category": "moisturizer",
+      "size": 100,
+      "months": 3,
+      "types": [
+        "all"
+      ],
+      "concerns": [
+        "secheresse",
+        "acne"
+      ],
+      "ings": [
+        "SNAIL SECRETION FILTRATE",
+        "SODIUM HYALURONATE"
+      ],
+      "desc": "Crème gel à 92 % de mucine d’escargot : hydrate, répare et apaise sans alourdir.",
+      "how": "Matin et soir en dernière étape (avant l’écran solaire le matin).",
+      "must": [
+        "cosrx",
+        "snail 92",
+        "100"
+      ],
+      "not": [],
+      "image": "https://atelierpara.ma/images/2026/06/product_40149.jpg",
+      "offers": [
+        {
+          "site": "atelierpara",
+          "externalId": 60097,
+          "title": "COSRX ADVANCED SNAIL 92 ALL IN ONE CREAM 100G",
+          "url": "https://atelierpara.ma/produit/cosrx-advanced-snail-92-all-in-one-cream-100g/",
+          "priceMad": 283.14,
+          "regularMad": 429,
+          "currency": "MAD",
+          "inStock": true,
+          "image": "https://atelierpara.ma/images/2026/06/product_40149.jpg"
+        }
+      ]
+    },
+    {
+      "origin": "KR",
+      "key": "cosrx-ceramide-moisturizer-80",
+      "brand": "COSRX",
+      "name": "The Ceramide Skin Barrier Moisturizer",
+      "category": "moisturizer",
+      "size": 80,
+      "months": 2.5,
+      "types": [
+        "seche",
+        "normale",
+        "mixte"
+      ],
+      "concerns": [
+        "secheresse",
+        "rougeurs"
+      ],
+      "ings": [
+        "CERAMIDE NP",
+        "PANTHENOL"
+      ],
+      "desc": "Crème barrière aux céramides pour les peaux sèches, sensibilisées ou qui tiraillent.",
+      "how": "Matin et soir en dernière étape (avant l’écran solaire le matin).",
+      "must": [
+        "cosrx",
+        "ceramide",
+        "80"
+      ],
+      "not": [],
+      "image": "https://atelierpara.ma/images/2026/06/product_40148.jpg",
+      "offers": [
+        {
+          "site": "atelierpara",
+          "externalId": 60093,
+          "title": "COSRX THE CERAMIDE SKIN BARRIER MOISTURIZER 80ML //",
+          "url": "https://atelierpara.ma/produit/cosrx-the-ceramide-skin-barrier-moisturizer-80-ml/",
+          "priceMad": 292.05,
+          "regularMad": 442.5,
+          "currency": "MAD",
+          "inStock": true,
+          "image": "https://atelierpara.ma/images/2026/06/product_40148.jpg"
+        }
+      ]
+    },
+    {
+      "origin": "KR",
+      "key": "skin1004-centella-cream-75",
+      "brand": "SKIN1004",
+      "name": "Madagascar Centella Soothing Cream",
+      "category": "moisturizer",
+      "size": 75,
+      "months": 2.5,
+      "types": [
+        "all"
+      ],
+      "concerns": [
+        "rougeurs",
+        "secheresse"
+      ],
+      "ings": [
+        "CENTELLA ASIATICA EXTRACT"
+      ],
+      "desc": "Crème apaisante à la centella de Madagascar, texture légère pour peaux sensibles et réactives.",
+      "how": "Matin et soir en dernière étape.",
+      "must": [
+        "skin1004",
+        "soothing",
+        "75"
+      ],
+      "not": [],
+      "image": "https://atelierpara.ma/images/2026/08/product_41291.jpg",
+      "offers": [
+        {
+          "site": "atelierpara",
+          "externalId": 70610,
+          "title": "SKIN1004 MADAGASCAR CENTELLA SOOTHING CREME 75ML",
+          "url": "https://atelierpara.ma/produit/skin1004-madagascar-centella-soothing-creme-75ml/",
+          "priceMad": 249,
+          "regularMad": 373.5,
+          "currency": "MAD",
+          "inStock": true,
+          "image": "https://atelierpara.ma/images/2026/08/product_41291.jpg"
+        }
+      ]
+    },
+    {
+      "origin": "KR",
+      "key": "torriden-dive-in-cream-100",
+      "brand": "Torriden",
+      "name": "Dive-In Soothing Cream",
+      "category": "moisturizer",
+      "size": 100,
+      "months": 3,
+      "types": [
+        "grasse",
+        "mixte",
+        "normale"
+      ],
+      "concerns": [
+        "secheresse",
+        "rougeurs"
+      ],
+      "ings": [
+        "SODIUM HYALURONATE",
+        "PANTHENOL"
+      ],
+      "desc": "Crème gel hydratante et apaisante à l’acide hyaluronique, fini non gras pour peaux mixtes à grasses déshydratées.",
+      "how": "Matin et soir en dernière étape.",
+      "must": [
+        "torriden",
+        "soothing cream",
+        "100"
+      ],
+      "not": [],
+      "image": "https://atelierpara.ma/images/2026/10/product_41689-1.jpg",
+      "offers": [
+        {
+          "site": "atelierpara",
+          "externalId": 72840,
+          "title": "TORRIDEN DIVE IN SOOTHING CREAM 100ML",
+          "url": "https://atelierpara.ma/produit/torriden-dive-in-soothing-cream-100ml/",
+          "priceMad": 325,
+          "regularMad": 325,
+          "currency": "MAD",
+          "inStock": true,
+          "image": "https://atelierpara.ma/images/2026/10/product_41689-1.jpg"
+        }
+      ]
+    },
+    {
+      "origin": "KR",
+      "key": "purito-centella-cream-50",
+      "brand": "Purito",
+      "name": "Wonder Releaf Centella Cream Unscented",
+      "category": "moisturizer",
+      "size": 50,
+      "months": 2,
+      "types": [
+        "all"
+      ],
+      "concerns": [
+        "rougeurs",
+        "secheresse"
+      ],
+      "ings": [
+        "CENTELLA ASIATICA EXTRACT",
+        "CERAMIDE NP"
+      ],
+      "desc": "Crème sans parfum à la centella et aux céramides, pour peaux sensibles et à tendance rouge.",
+      "how": "Matin et soir en dernière étape.",
+      "must": [
+        "purito",
+        "centella cream",
+        "50"
+      ],
+      "not": [
+        "eye",
+        "yeux"
+      ],
+      "image": "https://atelierpara.ma/images/2026/10/product_41675-1.webp",
+      "offers": [
+        {
+          "site": "atelierpara",
+          "externalId": 72827,
+          "title": "PURITO WONDER RELEAF CENTELLA CREAM UNSCENTED 50ML",
+          "url": "https://atelierpara.ma/produit/purito-wonder-releaf-centella-cream-unscented-50ml/",
+          "priceMad": 250,
+          "regularMad": 250,
+          "currency": "MAD",
+          "inStock": true,
+          "image": "https://atelierpara.ma/images/2026/10/product_41675-1.webp"
+        }
+      ]
+    },
+    {
+      "origin": "KR",
+      "key": "tocobo-multi-ceramide-cream-50",
+      "brand": "Tocobo",
+      "name": "Multi Ceramide Cream",
+      "category": "moisturizer",
+      "size": 50,
+      "months": 2,
+      "types": [
+        "seche",
+        "normale"
+      ],
+      "concerns": [
+        "secheresse"
+      ],
+      "ings": [
+        "CERAMIDE NP",
+        "SHEA BUTTER"
+      ],
+      "desc": "Crème riche aux céramides multiples pour renforcer la barrière des peaux sèches.",
+      "how": "Matin et soir en dernière étape.",
+      "must": [
+        "tocobo",
+        "ceramide",
+        "50"
+      ],
+      "not": [],
+      "image": "https://atelierpara.ma/images/2026/10/product_41815-1.webp",
+      "offers": [
+        {
+          "site": "atelierpara",
+          "externalId": 74273,
+          "title": "TOCOBO CREME MULTI-CERAMIDES 50ML",
+          "url": "https://atelierpara.ma/produit/tocobo-creme-multi-ceramides-50ml/",
+          "priceMad": 320,
+          "regularMad": 320,
+          "currency": "MAD",
+          "inStock": true,
+          "image": "https://atelierpara.ma/images/2026/10/product_41815-1.webp"
+        },
+        {
+          "site": "parachezvous",
+          "externalId": 177591,
+          "title": "TOCOBO – Multi Ceramide Cream – 50Ml",
+          "url": "https://parachezvous.ma/product/tocobo-multi-ceramide-cream-50ml/",
+          "priceMad": 320,
+          "regularMad": 479,
+          "currency": "MAD",
+          "inStock": true,
+          "image": "https://parachezvous.ma/wp-content/uploads/2026/01/tocobo-multi-ceramide-cream-50ml.jpg"
+        }
+      ]
+    },
+    {
+      "origin": "KR",
+      "key": "joseon-relief-sun-probiotics-50",
+      "brand": "Beauty of Joseon",
+      "name": "Relief Sun Rice + Probiotics SPF50+",
+      "category": "sunscreen",
+      "size": 50,
+      "months": 1,
+      "types": [
+        "all"
+      ],
+      "concerns": [
+        "taches",
+        "secheresse"
+      ],
+      "ings": [
+        "ORYZA SATIVA (RICE) BRAN WATER",
+        "LACTOBACILLUS FERMENT"
+      ],
+      "desc": "Crème solaire coréenne culte SPF50+ PA++++ au riz et aux probiotiques, fini lumineux, sans trace blanche.",
+      "how": "Chaque matin en dernière étape, 2 doigts pour le visage ; renouveler toutes les 2 heures au soleil.",
+      "must": [
+        "joseon",
+        "probiotics",
+        "50"
+      ],
+      "not": [
+        "aqua",
+        "fresh"
+      ],
+      "image": "https://atelierpara.ma/images/2026/09/product_30579.webp",
+      "offers": [
+        {
+          "site": "atelierpara",
+          "externalId": 57087,
+          "title": "BEAUTY OF JOSEON RELIEF SUN RICE + PROBIOTICS SPF50+ 50ML",
+          "url": "https://atelierpara.ma/produit/beauty-of-joseon-relief-sun-rice-probiotics-spf50/",
+          "priceMad": 228.25,
+          "regularMad": 358.5,
+          "currency": "MAD",
+          "inStock": true,
+          "image": "https://atelierpara.ma/images/2026/09/product_30579.webp"
+        },
+        {
+          "site": "parachezvous",
+          "externalId": 108662,
+          "title": "BEAUTY OF JOSEON – Relief Sun Rice + Probiotics SPF50+ (solaire) – 50ml",
+          "url": "https://parachezvous.ma/product/beauty-of-joseon-relief-sun-rice-probiotics-spf50-solaire-50ml/",
+          "priceMad": 243,
+          "regularMad": 369,
+          "currency": "MAD",
+          "inStock": true,
+          "image": "https://parachezvous.ma/wp-content/uploads/2024/08/beauty-of-joseon-relief-sun-rice-probiotics-spf50-solaire-50ml.jpg"
+        }
+      ]
+    },
+    {
+      "origin": "KR",
+      "key": "joseon-relief-sun-aqua-fresh",
+      "brand": "Beauty of Joseon",
+      "name": "Relief Sun Aqua-Fresh Rice + B5 SPF50+",
+      "category": "sunscreen",
+      "size": 50,
+      "months": 1,
+      "types": [
+        "grasse",
+        "mixte",
+        "normale"
+      ],
+      "concerns": [
+        "pores"
+      ],
+      "ings": [
+        "ORYZA SATIVA (RICE) BRAN WATER",
+        "PANTHENOL"
+      ],
+      "desc": "Version gel ultra-légère et fraîche de la Relief Sun, idéale pour peaux mixtes à grasses et climat chaud.",
+      "how": "Chaque matin en dernière étape ; renouveler toutes les 2 heures au soleil.",
+      "must": [
+        "joseon",
+        "aqua fresh"
+      ],
+      "not": [],
+      "image": "https://atelierpara.ma/images/2026/09/product_27847.webp",
+      "offers": [
+        {
+          "site": "atelierpara",
+          "externalId": 57089,
+          "title": "BEAUTY OF JOSEON RELIEF SUN AQUA FRESH RICE + B5 SPF50+ PA++++ 50ML",
+          "url": "https://atelierpara.ma/produit/beauty-of-joseon-relief-sun-aqua-fresh-riceb5-spf50pa50ml/",
+          "priceMad": 240.57,
+          "regularMad": 364.5,
+          "currency": "MAD",
+          "inStock": true,
+          "image": "https://atelierpara.ma/images/2026/09/product_27847.webp"
+        },
+        {
+          "site": "parachezvous",
+          "externalId": 165895,
+          "title": "BEAUTY OF JOSEON – Relief Sun Aqua Fresh Rice+B5 SPF50+",
+          "url": "https://parachezvous.ma/product/beauty-of-joseon-relief-sun-aqua-fresh-riceb5-spf50/",
+          "priceMad": 243,
+          "regularMad": 369,
+          "currency": "MAD",
+          "inStock": true,
+          "image": "https://parachezvous.ma/wp-content/uploads/2025/10/beauty-of-joseon-relief-sun-aqua-fresh-riceb5-spf50.webp"
+        }
+      ]
+    },
+    {
+      "origin": "KR",
+      "key": "skin1004-sun-serum-50",
+      "brand": "SKIN1004",
+      "name": "Hyalu-Cica Water-Fit Sun Serum SPF50+",
+      "category": "sunscreen",
+      "size": 50,
+      "months": 1,
+      "types": [
+        "all"
+      ],
+      "concerns": [
+        "secheresse",
+        "rougeurs"
+      ],
+      "ings": [
+        "CENTELLA ASIATICA EXTRACT",
+        "SODIUM HYALURONATE"
+      ],
+      "desc": "Sérum solaire SPF50+ PA++++ à la centella et à l’acide hyaluronique, texture eau, sans film gras.",
+      "how": "Chaque matin en dernière étape ; renouveler toutes les 2 heures au soleil.",
+      "must": [
+        "skin1004",
+        "sun serum",
+        "50"
+      ],
+      "not": [],
+      "image": "https://atelierpara.ma/images/2026/06/product_40706.jpg",
+      "offers": [
+        {
+          "site": "atelierpara",
+          "externalId": 67705,
+          "title": "SKIN1004 CENTELLA HYALU-CICA WATER-FIT SUN SERUM SPF50+ PA++++ 50ML",
+          "url": "https://atelierpara.ma/produit/skin1004-centella-hyalu-cica-water-fit-sun-serum-spf50-pa-50ml/",
+          "priceMad": 226,
+          "regularMad": 226,
+          "currency": "MAD",
+          "inStock": true,
+          "image": "https://atelierpara.ma/images/2026/06/product_40706.jpg"
+        }
+      ]
+    },
+    {
+      "origin": "KR",
+      "key": "tocobo-bio-watery-sun-50",
+      "brand": "Tocobo",
+      "name": "Bio Watery Sun Cream SPF50+",
+      "category": "sunscreen",
+      "size": 50,
+      "months": 1,
+      "types": [
+        "grasse",
+        "mixte",
+        "normale"
+      ],
+      "concerns": [
+        "pores"
+      ],
+      "ings": [],
+      "desc": "Crème solaire aqueuse SPF50+ PA++++, fini frais et invisible sous le maquillage.",
+      "how": "Chaque matin en dernière étape ; renouveler toutes les 2 heures au soleil.",
+      "must": [
+        "tocobo",
+        "watery"
+      ],
+      "not": [],
+      "image": "https://atelierpara.ma/images/2026/10/product_27844.jpg",
+      "offers": [
+        {
+          "site": "atelierpara",
+          "externalId": 74338,
+          "title": "TOCOBO CREME SOLAIRE BIO WATERY SPF50 PA++++ 50ML ***",
+          "url": "https://atelierpara.ma/produit/tocobo-creme-solaire-bio-watery-spf50-pa-50ml/",
+          "priceMad": 270,
+          "regularMad": 270,
+          "currency": "MAD",
+          "inStock": true,
+          "image": "https://atelierpara.ma/images/2026/10/product_27844.jpg"
+        },
+        {
+          "site": "parachezvous",
+          "externalId": 155927,
+          "title": "TOCOBO – Bio Watery Sun Cream SPF50 Pa++++",
+          "url": "https://parachezvous.ma/product/tocobo-bio-watery-sun-cream-spf50-pa/",
+          "priceMad": 270,
+          "regularMad": 409,
+          "currency": "MAD",
+          "inStock": true,
+          "image": "https://parachezvous.ma/wp-content/uploads/2025/08/tocobo-bio-watery-sun-cream-spf50-pa.jpg"
+        }
+      ]
+    },
+    {
+      "origin": "KR",
+      "key": "purito-centella-sun-60",
+      "brand": "Purito",
+      "name": "Wonder Releaf Centella Daily Sun Lotion SPF50+",
+      "category": "sunscreen",
+      "size": 60,
+      "months": 1.2,
+      "types": [
+        "all"
+      ],
+      "concerns": [
+        "rougeurs"
+      ],
+      "ings": [
+        "CENTELLA ASIATICA EXTRACT"
+      ],
+      "desc": "Lotion solaire SPF50+ PA++++ à la centella pour peaux sensibles, sans parfum ajouté.",
+      "how": "Chaque matin en dernière étape ; renouveler toutes les 2 heures au soleil.",
+      "must": [
+        "purito",
+        "sun",
+        "60"
+      ],
+      "not": [],
+      "image": "https://atelierpara.ma/images/2026/10/product_41677-1.webp",
+      "offers": [
+        {
+          "site": "atelierpara",
+          "externalId": 72829,
+          "title": "PURITO WONDER RELEAF CENTELLA DAILY SUN LOTION SPF50+ PA++++ 60ML",
+          "url": "https://atelierpara.ma/produit/purito-wonder-releaf-centella-daily-sun-lotion-spf50-pa-60ml/",
+          "priceMad": 259,
+          "regularMad": 259,
+          "currency": "MAD",
+          "inStock": true,
+          "image": "https://atelierpara.ma/images/2026/10/product_41677-1.webp"
         }
       ]
     }

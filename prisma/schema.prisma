@@ -186,6 +186,7 @@ model Product {
   howTo        String
   precautions  String?
   isNatural    Boolean             @default(false)
+  origin       String? // pays d'origine de la marque, ex. KR (soins coréens)
   sponsored    Boolean             @default(false)
   imageUrl     String?
   imageSource  String? // marchand d'où provient la photo

@@ -37,9 +37,11 @@ const matches = (spec, name) => {
   return spec.must.every((m) => has(n, m)) && ![...spec.not, ...BAD].some((m) => m && has(n, m));
 };
 
-const only = process.argv.slice(2);
+const args = process.argv.slice(2);
+const origin = args.find((a) => a.startsWith('--origin='))?.slice(9);
+const only = args.filter((a) => !a.startsWith('--'));
 const out = [];
-for (const spec of SPECS.filter((x) => !only.length || only.includes(x.key))) {
+for (const spec of SPECS.filter((x) => (!only.length || only.includes(x.key)) && (!origin || x.origin === origin))) {
   const words = spec.must.filter((m) => !/^\d+$/.test(m));
   // Ces sites cherchent la phrase exacte : on interroge un seul mot (le plus distinctif), puis la marque.
   const single = words.flatMap((w) => w.split(' ')).filter((w) => w.length > 2);
@@ -71,9 +73,10 @@ for (const spec of SPECS.filter((x) => !only.length || only.includes(x.key))) {
 }
 let products = out;
 const target = new URL('../catalog.json', import.meta.url);
-if (only.length && fs.existsSync(target)) {
+if ((only.length || origin) && fs.existsSync(target)) {
   const prev = JSON.parse(fs.readFileSync(target, 'utf8'));
   products = prev.products.map((p) => out.find((o) => o.key === p.key) ?? p);
+  for (const o of out) if (!products.some((p) => p.key === o.key)) products.push(o);
 }
 fs.writeFileSync(target, JSON.stringify({ collectedAt: new Date().toISOString(), sites: SITES, products }, null, 2));
 console.log(`\n${out.filter((p) => p.offers.length).length}/${out.length} produits avec au moins une offre réelle.`);

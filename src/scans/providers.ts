@@ -40,6 +40,35 @@ export interface AnalysisResult {
   /** Préoccupations estimées surtout à partir du questionnaire (non mesurables de façon fiable sur une photo) */
   fromAnswers: Concern[];
   metrics: OnDeviceScan['zones'];
+  /** Type de peau estimé (brillance par zone + questionnaire) */
+  skinType?: SkinTypeResult;
+}
+
+export type SkinType = 'seche' | 'grasse' | 'mixte' | 'normale';
+export interface SkinTypeResult {
+  type: SkinType;
+  sensitive: boolean;
+  /** 'photo' : déduit de la brillance mesurée ; 'answers' : la photo ne permet pas de trancher, type déclaré conservé */
+  source: 'photo' | 'answers';
+  declared: SkinType | null;
+}
+
+/**
+ * Type de peau : la brillance (sébum) de la zone T (front, menton) comparée à celle des joues.
+ * Une peau sèche ne se voit pas de façon fiable sur une photo : on garde alors le type déclaré.
+ */
+export function estimateSkinType(metrics: OnDeviceScan['zones'], concerns: Record<Concern, Level>, declared?: string | null): SkinTypeResult {
+  const [s0, s1] = THRESHOLDS.shine;
+  const t = Math.max(metrics.front.shine, metrics.menton.shine);
+  const c = metrics.joues.shine;
+  const dec = (['seche', 'grasse', 'mixte', 'normale'] as const).find((x) => x === declared) ?? null;
+  let type: SkinType | null = null;
+  if (t >= s1 && c >= s0) type = 'grasse';
+  else if (t >= s0 && c < s0) type = 'mixte';
+  else if (t >= s0 && c >= s0) type = 'grasse';
+  const sensitive = concerns.rougeurs === 'marque';
+  if (type) return { type, sensitive, source: 'photo', declared: dec };
+  return { type: dec ?? (concerns.secheresse !== 'faible' ? 'seche' : 'normale'), sensitive, source: dec ? 'answers' : 'photo', declared: dec };
 }
 
 /**
@@ -95,7 +124,7 @@ export function scoreScan(scan: OnDeviceScan, answers: { skinType?: string | nul
     if (declared.has(c) && v === 'faible') { v = 'moyen'; fromAnswers.push(c); }
     concerns[c] = v;
   }
-  return { engine: scan.engine, zones, concerns, score: scoreOf(concerns), fromAnswers, metrics: scan.zones };
+  return { engine: scan.engine, zones, concerns, score: scoreOf(concerns), fromAnswers, metrics: scan.zones, skinType: estimateSkinType(scan.zones, concerns, answers.skinType) };
 }
 
 const LABELS: Record<string, Record<Concern, string>> = {

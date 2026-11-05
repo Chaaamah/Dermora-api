@@ -2,6 +2,8 @@
 // `must` / `not` servent à retrouver EXACTEMENT ce produit (marque + gamme + contenance) chez chaque marchand.
 // Les ingrédients clés listés sont ceux mis en avant par les marques ; la liste INCI complète
 // doit être saisie et validée par le pharmacien conseil dans le back-office avant publication.
+import { KBEAUTY } from './specs-kbeauty.mjs';
+
 export const SPECS = [
   // ───────── Nettoyants
   { key: 'cerave-creme-lavante-473', brand: 'CeraVe', name: 'Crème Lavante Hydratante', category: 'cleanser', size: 473, months: 4, types: ['seche', 'normale'], concerns: ['secheresse'], ings: ['CERAMIDE NP', 'SODIUM HYALURONATE'],
@@ -33,7 +35,7 @@ export const SPECS = [
   { key: 'lrp-hyalu-b5-serum-30', brand: 'La Roche-Posay', name: 'Hyalu B5 Sérum', category: 'serum', size: 30, months: 2, types: ['all'], concerns: ['secheresse', 'rides'], ings: ['SODIUM HYALURONATE', 'PANTHENOL', 'MADECASSOSIDE'],
     desc: 'Sérum repulpant à l’acide hyaluronique et à la vitamine B5, bien toléré par les peaux sensibles.', how: 'Matin et/ou soir sur peau propre, avant la crème.',
     must: ['hyalu b5', 'serum', '30'], not: ['pack', 'black friday', 'yeux', 'eye', 'aquagel'] },
-  { key: 'anua-niacinamide-txa-30', brand: 'Anua', name: 'Sérum Niacinamide 10% + TXA 4%', category: 'serum', size: 30, months: 2, types: ['all'], concerns: ['taches', 'pores', 'eclat'], ings: ['NIACINAMIDE', 'TRANEXAMIC ACID'],
+  { key: 'anua-niacinamide-txa-30', origin: 'KR', brand: 'Anua', name: 'Sérum Niacinamide 10% + TXA 4%', category: 'serum', size: 30, months: 2, types: ['all'], concerns: ['taches', 'pores', 'eclat'], ings: ['NIACINAMIDE', 'TRANEXAMIC ACID'],
     desc: 'Sérum unifiant à 10 % de niacinamide et 4 % d’acide tranexamique, contre taches et teint terne.', how: 'Matin et/ou soir, 2 à 3 gouttes avant la crème. Protection solaire le matin.',
     must: ['anua', 'niacinamide', '30'], not: ['pack'] },
   { key: 'revox-just-retinol-niacinamide-30', brand: 'Revox B77', name: 'Just Retinol 0,3% + Niacinamide 5%', category: 'treatment', size: 30, months: 2, types: ['normale', 'mixte', 'grasse'], concerns: ['rides', 'eclat', 'pores'], avoid: ['pregnancy', 'sensitive'], ings: ['RETINOL', 'NIACINAMIDE'],
@@ -149,3 +151,6 @@ export const SPECS = [
     desc: 'Huile d’argan cosmétique marocaine pour bain d’huile ou pointes.', how: 'Bain d’huile 30 min avant shampooing, 1 fois par semaine, ou 2 gouttes sur les pointes.', prec: 'Huile cosmétique (non torréfiée).',
     must: ['jerraflore', 'argan', '100'], not: ['savon', 'shampo', 'creme', 'gommage', 'gel'] },
 ];
+
+// Soins coréens
+SPECS.push(...KBEAUTY);

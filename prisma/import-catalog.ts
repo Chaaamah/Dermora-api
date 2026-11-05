@@ -19,7 +19,7 @@ import { RoutineEngine } from '../src/routines/engine.service';
 const prisma = new PrismaClient();
 
 interface Spec {
-  key: string; brand: string; name: string; domain?: string; category: string; size?: number; months: number;
+  key: string; brand: string; name: string; domain?: string; origin?: string; category: string; size?: number; months: number;
   types: string[]; concerns: string[]; avoid?: string[]; natural?: boolean; ings: string[]; desc: string; how: string; prec?: string;
   image: string | null;
   offers: Array<{ site: string; externalId: number; title: string; url: string; priceMad: number; regularMad: number; inStock: boolean; image: string | null }>;
@@ -48,6 +48,16 @@ const INGREDIENTS: Record<string, { nameFr: string; fn: string; pregnancyUnsafe?
   'CICLOPIROX OLAMINE': { nameFr: 'Ciclopirox olamine', fn: 'Antipelliculaire' },
   'ZINC PYRITHIONE': { nameFr: 'Pyrithione de zinc', fn: 'Antipelliculaire' },
   'MANGIFERA INDICA SEED BUTTER': { nameFr: 'Beurre de mangue', fn: 'Nourrissant' },
+  // Actifs phares des soins coréens
+  'SNAIL SECRETION FILTRATE': { nameFr: 'Mucine d’escargot', fn: 'Hydratant, réparateur' },
+  'CENTELLA ASIATICA EXTRACT': { nameFr: 'Centella asiatica (cica)', fn: 'Apaisant, réparateur' },
+  'HOUTTUYNIA CORDATA EXTRACT': { nameFr: 'Heartleaf (houttuynia)', fn: 'Apaisant, purifiant' },
+  'PROPOLIS EXTRACT': { nameFr: 'Propolis', fn: 'Apaisant, éclat', precautions: 'Éviter en cas d’allergie aux produits de la ruche.' },
+  'ALPHA-ARBUTIN': { nameFr: 'Alpha-arbutine', fn: 'Anti-taches' },
+  'ORYZA SATIVA (RICE) BRAN WATER': { nameFr: 'Eau de riz', fn: 'Éclat, adoucissant' },
+  'PANAX GINSENG ROOT EXTRACT': { nameFr: 'Ginseng', fn: 'Tonifiant, antioxydant' },
+  'CAMELLIA SINENSIS LEAF EXTRACT': { nameFr: 'Thé vert', fn: 'Apaisant, antioxydant' },
+  'LACTOBACILLUS FERMENT': { nameFr: 'Probiotiques (ferment de lactobacille)', fn: 'Équilibre de la barrière cutanée' },
 };
 
 const WEB = process.env.PUBLIC_WEB_URL ?? 'http://localhost:3100';
@@ -82,7 +92,7 @@ async function main() {
     const data = {
       brand: p.brand, name: p.name, domain: p.domain ?? 'skin', category: p.category, sizeMl: p.size ?? null, monthsSupply: p.months,
       skinTypes: p.types, concerns: p.concerns, avoidFor: p.avoid ?? [], description: p.desc, howTo: p.how, precautions: p.prec ?? null,
-      isNatural: !!p.natural, imageUrl: imgOffer?.image ?? null, imageSource: imgOffer ? catalog.sites.find((s) => s.id === imgOffer.site)?.name ?? null : null,
+      isNatural: !!p.natural, origin: p.origin ?? null, imageUrl: imgOffer?.image ?? null, imageSource: imgOffer ? catalog.sites.find((s) => s.id === imgOffer.site)?.name ?? null : null,
       status: 'ACTIVE',
     };
     const prod = await prisma.product.upsert({ where: { sourceKey: p.key }, create: { sourceKey: p.key, ...data }, update: data });

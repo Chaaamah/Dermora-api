@@ -22,7 +22,7 @@ export function serializeProduct(p: FullProduct) {
   return {
     id: p.id, brand: p.brand, name: p.name, domain: p.domain, category: p.category, sizeMl: p.sizeMl,
     skinTypes: p.skinTypes, concerns: p.concerns, avoidFor: p.avoidFor, description: p.description,
-    howTo: p.howTo, precautions: p.precautions, isNatural: p.isNatural, sponsored: p.sponsored,
+    howTo: p.howTo, precautions: p.precautions, isNatural: p.isNatural, origin: p.origin, sponsored: p.sponsored,
     imageUrl: p.imageUrl, imageSource: p.imageSource,
     validated: !!(p.validatedBy && p.validatedAt), validatedBy: p.validatedBy, price, monthlyMad: price ? monthlyCost(price, p.monthsSupply) : null,
     ingredients: p.ingredients
@@ -41,11 +41,12 @@ export class CatalogController {
 
   @OptionalAuth()
   @Get('products')
-  async list(@Query('q') q?: string, @Query('category') category?: string, @Query('domain') domain?: string, @Query('concern') concern?: string) {
+  async list(@Query('q') q?: string, @Query('category') category?: string, @Query('domain') domain?: string, @Query('concern') concern?: string, @Query('origin') origin?: string) {
     const where: Prisma.ProductWhereInput = { status: 'ACTIVE', ...(requireValidation() ? { validatedAt: { not: null } } : {}) };
     if (category) where.category = category;
     if (domain) where.domain = domain;
     if (concern) where.concerns = { has: concern };
+    if (origin) where.origin = origin.toUpperCase();
     if (q) where.OR = [{ name: { contains: q, mode: 'insensitive' } }, { brand: { contains: q, mode: 'insensitive' } }, { description: { contains: q, mode: 'insensitive' } }];
     const items = await this.prisma.product.findMany({ where, include: productInclude, orderBy: [{ brand: 'asc' }] });
     return items.map(serializeProduct).filter((p) => p.price !== null);
