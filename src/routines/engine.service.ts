@@ -184,15 +184,16 @@ export class RoutineEngine {
     const { skin, hair, alert, slots, activeRules } = await this.prepare(userId);
     if (alert) return { blocked: true, blockReason: alert, options: [] };
     if (!skin) throw new NotFoundException('Complétez d\'abord le questionnaire peau.');
-    const out: { tier: Tier; name: string; tagline: string; totalMad: number; steps: unknown[] }[] = [];
+    const out: { tier: Tier; name: string; tagline: string; totalMad: number; purchaseMad: number; steps: unknown[] }[] = [];
     for (const tier of TIERS) {
       this.applyTier(slots, tier);
       const b = this.build(slots, activeRules, hair);
       if (out.some((o) => o.totalMad === b.totalMad)) continue; // formule identique à une précédente
       const prods = await this.prisma.product.findMany({ where: { id: { in: [...new Set(b.steps.map((s) => s.productId))] } }, include: productInclude });
       const map = new Map(prods.map((p) => [p.id, serializeProduct(p)]));
+      const purchaseMad = Math.round([...map.values()].reduce((sum, p) => sum + (p.price ?? 0), 0) * 100) / 100;
       out.push({
-        tier, name: TIER_INFO[tier].name, tagline: TIER_INFO[tier].tagline, totalMad: b.totalMad,
+        tier, name: TIER_INFO[tier].name, tagline: TIER_INFO[tier].tagline, totalMad: b.totalMad, purchaseMad,
         steps: b.steps.map((s) => ({ moment: s.moment, order: s.order, step: s.step, category: s.category, monthlyMad: s.monthlyMad, frequency: s.frequency, product: map.get(s.productId) ?? null })),
       });
     }
@@ -239,8 +240,11 @@ export class RoutineEngine {
     }
     const prods = await this.prisma.product.findMany({ where: { id: { in: [...ids] } }, include: productInclude });
     const map = new Map(prods.map((p) => [p.id, serializeProduct(p)]));
+    const used = new Set(r.steps.map((st) => st.productId).filter(Boolean) as string[]);
+    const purchaseMad = Math.round([...used].reduce((sum, id) => sum + (map.get(id)?.price ?? 0), 0) * 100) / 100;
     return {
       ...r,
+      purchaseMad,
       tierName: r.tier && r.tier in TIER_INFO ? TIER_INFO[r.tier as Tier].name : r.tier === 'budget' ? 'Sur mesure' : null,
       steps: r.steps.map((s) => {
         const alt = (s.alternatives ?? {}) as { cheaper?: string; natural?: string };
