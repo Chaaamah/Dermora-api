@@ -124,7 +124,12 @@ async function main() {
   const routines = await prisma.routine.findMany({ where: { active: true } });
   let regenerated = 0;
   for (const r of routines) {
-    try { await engine.generate(r.userId, r.budgetMad); regenerated++; } catch (e) { console.warn(`Routine ${r.userId} : ${(e as Error).message}`); }
+    try {
+      // La formule choisie (Essentielle / Équilibre / Premium) est conservée
+      if (r.tier === 'eco' || r.tier === 'equilibre' || r.tier === 'premium') await engine.choose(r.userId, r.tier);
+      else await engine.generate(r.userId, r.budgetMad || 400);
+      regenerated++;
+    } catch (e) { console.warn(`Routine ${r.userId} : ${(e as Error).message}`); }
   }
 
   console.log(`✓ ${imported} produits réels importés (relevé du ${collectedAt.toLocaleString('fr-MA')})`);

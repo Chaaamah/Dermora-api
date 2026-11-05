@@ -6,6 +6,7 @@ import { AuthGuard, AuthUser, CurrentUser, Roles, parse, z } from '../common/aut
 import { MEDICAL_REFERRAL, messageHasRedFlag, safetyAlert } from '../common/safety';
 import { RoutineEngine } from '../routines/engine.service';
 import { RoutinesModule } from '../routines/routines.module';
+import { detectLang, fallbackAnswer } from './fallback';
 
 const MODEL = process.env.ASSISTANT_MODEL || 'claude-opus-5-5';
 
@@ -25,17 +26,8 @@ Règles impératives :
 4. Grossesse ou allaitement déclarés : jamais de rétinoïdes (rétinol, rétinal), ni d'acide salicylique à forte dose ; rappelle de demander l'avis d'un professionnel de santé.
 5. Un seul nouveau produit à la fois, test sur une petite zone 48 h avant. Protection solaire chaque matin.
 6. Rituels : pas de citron pur sur la peau ; henné noir à éviter (PPD) ; huile d'argan cosmétique et non alimentaire.
-7. Réponds dans la langue de la personne (français, arabe, darija en lettres latines ou arabes, anglais). Ton chaleureux, élégant et concis : 2 à 6 phrases ou une courte liste. Pas de titres Markdown.`;
+7. LANGUE : réponds TOUJOURS dans la langue et l'écriture du DERNIER message de la personne, quelle qu'elle soit (français, arabe, darija en lettres arabes ou latines — y compris avec chiffres 3, 7, 9 —, anglais, espagnol, amazighe, etc.), même si son profil indique une autre langue. Ton chaleureux, élégant et concis : 2 à 6 phrases ou une courte liste. Pas de titres Markdown.`;
 
-const FALLBACK: Array<{ k: string[]; fr: string }> = [
-  { k: ['solaire', 'spf', 'soleil', 'chams', 'sun'], fr: "La protection solaire est l'étape la plus importante : chaque matin, l'équivalent de deux doigts pour le visage et le cou, en dernière étape. Renouvelez toutes les 2 heures si vous êtes au soleil, même par temps nuageux." },
-  { k: ['bouton', 'acné', 'acne', 'hboub', 'imperfection'], fr: "Pour les imperfections : un nettoyant doux matin et soir, un hydratant non comédogène et la protection solaire. Ne percez pas les boutons, et laissez 6 à 8 semaines au soin ciblé de votre routine. Si l'acné est douloureuse ou laisse des cicatrices, consultez un dermatologue." },
-  { k: ['tache', 'taches', 'pigment', 'spots'], fr: "Contre les taches, la constance compte plus que la force : protection solaire chaque matin, puis un actif comme la niacinamide, l'acide azélaïque ou la vitamine C. Évitez le citron pur sur la peau : il peut provoquer brûlures et nouvelles taches." },
-  { k: ['ghassoul', 'henné', 'henne', 'argan', 'rose'], fr: "Les rituels marocains sont précieux avec quelques précautions : ghassoul à ne pas laisser sécher, henné uniquement pur (jamais de henné noir), huile d'argan cosmétique plutôt qu'alimentaire, eau de rose sans alcool. Faites toujours un test sur une petite zone 48 h avant." },
-  { k: ['budget', 'cher', 'prix', 'ghali', 'flouss'], fr: "Vous pouvez ajuster le curseur de budget dans l'onglet Routine : Dermora choisit automatiquement des produits moins chers, en gardant toujours nettoyant, hydratant et protection solaire. Chaque étape propose aussi une alternative plus économique." },
-  { k: ['enceinte', 'grossesse', 'allaite', 'pregnan', 'hamla'], fr: "Pendant la grossesse ou l'allaitement, déclarez-le dans votre profil : Dermora exclut automatiquement les ingrédients déconseillés comme les rétinoïdes. Demandez aussi l'avis de votre médecin ou sage-femme avant tout nouveau soin." },
-  { k: ['cheveux', 'chute', 'cuir', 'cheveu', 'cha3r', 'hair'], fr: "Pour les cheveux : un shampooing adapté à votre cuir chevelu, un après-shampooing à chaque lavage sur les longueurs, et un masque ou bain d'huile d'argan une fois par semaine. Une chute soudaine ou par plaques nécessite un avis médical." },
-];
 
 @Injectable()
 export class AssistantService {
@@ -44,7 +36,7 @@ export class AssistantService {
 
   constructor(private prisma: PrismaService, private engine: RoutineEngine) {
     try {
-      this.client = new Anthropic();
+      this.client = process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN ? new Anthropic({ timeout: 45_000, maxRetries: 1 }) : null;
     } catch {
       this.client = null; // pas d'identifiants : assistant de secours
     }
@@ -72,67 +64,104 @@ export class AssistantService {
     return `Contexte de la personne (données confidentielles, à utiliser uniquement pour personnaliser la réponse) :\n${lines.filter(Boolean).join('\n')}`;
   }
 
-  private fallback(text: string, lang: string): string {
-    const t = text.toLowerCase();
-    const hit = FALLBACK.find((f) => f.k.some((k) => t.includes(k)));
-    const base = hit?.fr ?? "Je suis là pour vous aider avec votre routine, vos produits et les rituels de soin. Posez-moi une question précise (par exemple : « dans quel ordre appliquer mes soins ? ») — et pour tout signe inhabituel sur la peau, consultez un dermatologue.";
-    if (lang === 'en') return `${base}\n\n(The full AI assistant is not configured yet — this is a standard answer.)`;
-    return base;
+  /** Réponse de secours dans la langue du message, appuyée sur la routine réelle. */
+  private async fallback(userId: string, text: string, profileLang: string): Promise<string> {
+    const routine = await this.engine.current(userId).catch(() => null);
+    const seed = await this.prisma.message.count({ where: { patientId: userId, channel: 'AI', senderRole: 'ASSISTANT' } });
+    return fallbackAnswer(text, detectLang(text, profileLang), routine, seed);
+  }
+
+  /** Historique de conversation (20 derniers messages), rôles alternés, commençant par la personne. */
+  private async history(userId: string) {
+    const history = await this.prisma.message.findMany({ where: { patientId: userId, channel: 'AI' }, orderBy: { createdAt: 'desc' }, take: 20 });
+    const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+    for (const m of history.reverse()) {
+      const role = m.senderRole === 'PATIENT' ? 'user' : 'assistant';
+      const last = messages[messages.length - 1];
+      if (last && last.role === role) last.content = `${last.content}\n\n${m.content}`;
+      else messages.push({ role, content: m.content });
+    }
+    while (messages.length && messages[0].role !== 'user') messages.shift();
+    return messages;
+  }
+
+  /** Claude (Anthropic). Renvoie null si indisponible (pas de clé, crédit épuisé, refus, panne). */
+  private async askClaude(userId: string, messages: Array<{ role: 'user' | 'assistant'; content: string }>): Promise<string | null> {
+    if (!this.client) return null;
+    try {
+      const params = {
+        model: MODEL,
+        max_tokens: 16000,
+        system: [
+          { type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
+          { type: 'text', text: await this.context(userId) },
+        ],
+        messages,
+        output_config: { effort: 'low' },
+        // Refus éventuel d'un classifieur : relance automatique sur le modèle de repli recommandé
+        betas: ['server-side-fallback-2026-07-01'],
+        fallbacks: 'default',
+      } as unknown as Anthropic.Beta.Messages.MessageCreateParamsNonStreaming;
+      const res = await this.client.beta.messages.create(params);
+      if (res.stop_reason === 'refusal') return null;
+      return res.content.filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === 'text').map((b) => b.text).join('\n').trim() || null;
+    } catch (e) {
+      if (e instanceof Anthropic.AuthenticationError) this.log.warn('Clé Anthropic invalide.');
+      else if (e instanceof Anthropic.RateLimitError) this.log.warn('Limite de débit Anthropic atteinte.');
+      else if (e instanceof Anthropic.APIError && /credit balance/i.test(e.message)) this.log.error('Crédit Anthropic épuisé : ajoutez du crédit sur console.anthropic.com > Plans & Billing.');
+      else if (e instanceof Anthropic.APIError) this.log.error(`Erreur API Claude ${e.status}: ${e.message}`);
+      else this.log.error(`Claude indisponible : ${(e as Error).message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Fournisseur compatible OpenAI (offre gratuite : Groq, Google Gemini…) :
+   * AI_API_KEY, AI_BASE_URL (défaut Groq), AI_MODEL. Renvoie null si non configuré ou en échec.
+   */
+  private async askOpenAICompatible(userId: string, messages: Array<{ role: 'user' | 'assistant'; content: string }>): Promise<string | null> {
+    const key = process.env.AI_API_KEY?.trim();
+    if (!key) return null;
+    const base = (process.env.AI_BASE_URL?.trim() || 'https://api.groq.com/openai/v1').replace(/\/+$/, '');
+    const model = process.env.AI_MODEL?.trim() || 'llama-3.3-70b-versatile';
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 45_000);
+    try {
+      const res = await fetch(`${base}/chat/completions`, {
+        method: 'POST', signal: ctrl.signal,
+        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model, temperature: 0.4, max_tokens: 900,
+          messages: [{ role: 'system', content: `${SYSTEM_PROMPT}\n\n${await this.context(userId)}` }, ...messages],
+        }),
+      });
+      if (!res.ok) { this.log.error(`Fournisseur IA ${res.status} : ${(await res.text()).slice(0, 300)}`); return null; }
+      const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
+      return data.choices?.[0]?.message?.content?.trim() || null;
+    } catch (e) {
+      this.log.error(`Fournisseur IA indisponible : ${(e as Error).message}`);
+      return null;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   async reply(userId: string, content: string) {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId }, include: { skinProfile: true, hairProfile: true } });
     await this.prisma.message.create({ data: { patientId: userId, channel: 'AI', senderRole: 'PATIENT', senderId: userId, content } });
 
-    let answer: string;
-    let mode: 'safety' | 'claude' | 'fallback';
+    let answer: string | null = null;
+    let mode: 'safety' | 'claude' | 'ai' | 'fallback';
     if (messageHasRedFlag(content) || safetyAlert(user.skinProfile, user.hairProfile)) {
       answer = MEDICAL_REFERRAL[user.lang] ?? MEDICAL_REFERRAL.fr;
       mode = 'safety';
-    } else if (this.client) {
-      try {
-        const history = await this.prisma.message.findMany({ where: { patientId: userId, channel: 'AI' }, orderBy: { createdAt: 'desc' }, take: 20 });
-        const messages: Anthropic.Beta.BetaMessageParam[] = [];
-        for (const m of history.reverse()) {
-          const role = m.senderRole === 'PATIENT' ? 'user' : 'assistant';
-          const last = messages[messages.length - 1];
-          if (last && last.role === role) last.content = `${last.content as string}\n\n${m.content}`;
-          else messages.push({ role, content: m.content });
-        }
-        while (messages.length && messages[0].role !== 'user') messages.shift();
-
-        const params = {
-          model: MODEL,
-          max_tokens: 16000,
-          system: [
-            { type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
-            { type: 'text', text: await this.context(userId) },
-          ],
-          messages,
-          output_config: { effort: 'low' },
-          // Refus éventuel d'un classifieur : relance automatique sur le modèle de repli recommandé
-          betas: ['server-side-fallback-2026-07-01'],
-          fallbacks: 'default',
-        } as unknown as Anthropic.Beta.Messages.MessageCreateParamsNonStreaming;
-        const res = await this.client.beta.messages.create(params);
-        if (res.stop_reason === 'refusal') {
-          answer = this.fallback(content, user.lang);
-          mode = 'fallback';
-        } else {
-          answer = res.content.filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === 'text').map((b) => b.text).join('\n').trim() || this.fallback(content, user.lang);
-          mode = 'claude';
-        }
-      } catch (e) {
-        if (e instanceof Anthropic.AuthenticationError) this.log.warn('Identifiants Anthropic absents ou invalides — assistant de secours.');
-        else if (e instanceof Anthropic.RateLimitError) this.log.warn('Limite de débit atteinte — assistant de secours.');
-        else if (e instanceof Anthropic.APIError) this.log.error(`Erreur API Claude ${e.status}: ${e.message}`);
-        else this.log.error(`Assistant indisponible: ${(e as Error).message}`);
-        answer = this.fallback(content, user.lang);
-        mode = 'fallback';
-      }
     } else {
-      answer = this.fallback(content, user.lang);
-      mode = 'fallback';
+      const messages = await this.history(userId);
+      // 1. Claude  2. fournisseur gratuit compatible OpenAI  3. assistante de secours (sans IA)
+      answer = await this.askClaude(userId, messages);
+      mode = 'claude';
+      if (!answer) { answer = await this.askOpenAICompatible(userId, messages); mode = 'ai'; }
+      if (!answer) { answer = await this.fallback(userId, content, user.lang); mode = 'fallback'; }
     }
 
     const msg = await this.prisma.message.create({ data: { patientId: userId, channel: 'AI', senderRole: 'ASSISTANT', content: answer } });

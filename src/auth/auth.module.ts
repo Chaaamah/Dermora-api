@@ -8,6 +8,7 @@ import type { User } from '@prisma/client';
 import { PrismaService } from '../common/common.module';
 import { ACCESS_SECRET, AuthGuard, AuthUser, CurrentUser, REFRESH_SECRET, parse, z } from '../common/auth';
 import { MailerService } from '../notifications/notifications.module';
+import { MailLang, renderMail } from '../notifications/email-template';
 
 const scrypt = promisify(scryptCb) as (pw: string, salt: Buffer, len: number) => Promise<Buffer>;
 
@@ -28,10 +29,20 @@ export async function verifyPassword(pw: string, stored: string): Promise<boolea
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
 
 const MAIL = {
-  fr: { subject: 'Dermora — activez votre compte', hello: 'Bonjour', body: 'Bienvenue sur Dermora ! Pour activer votre compte, cliquez sur le lien ci-dessous :', button: 'Activer mon compte', expires: 'Ce lien est valable 48 heures. Si vous n\'avez pas créé de compte, ignorez ce message.' },
-  en: { subject: 'Dermora — activate your account', hello: 'Hello', body: 'Welcome to Dermora! To activate your account, click the link below:', button: 'Activate my account', expires: 'This link is valid for 48 hours. If you did not create an account, ignore this message.' },
-  ar: { subject: 'ديرمورا — فعّلي حسابك', hello: 'مرحباً', body: 'مرحباً بك في ديرمورا! لتفعيل حسابك، اضغطي على الرابط أدناه:', button: 'تفعيل حسابي', expires: 'هذا الرابط صالح لمدة 48 ساعة. إذا لم تنشئي حساباً، تجاهلي هذه الرسالة.' },
+  fr: {
+    verify: { subject: 'Activez votre compte Dermora', preheader: 'Un clic pour commencer votre routine personnalisée.', title: 'Bienvenue sur Dermora', hello: 'Bonjour', body: ['Merci de nous avoir rejointes ! Votre espace est prêt : diagnostic de peau, routine adaptée à votre budget et produits disponibles au Maroc.', 'Pour activer votre compte, il suffit de confirmer votre adresse e-mail.'], button: 'Activer mon compte', note: 'Ce lien est valable 48 heures. Si vous n\'avez pas créé de compte Dermora, ignorez simplement ce message.' },
+    reset: { subject: 'Votre code Dermora', preheader: 'Votre code de réinitialisation, valable 15 minutes.', title: 'Réinitialiser votre mot de passe', hello: 'Bonjour', body: ['Voici votre code de réinitialisation. Saisissez-le dans l\'application pour choisir un nouveau mot de passe.'], note: 'Ce code est valable 15 minutes. Si vous n\'êtes pas à l\'origine de cette demande, ignorez ce message : votre mot de passe reste inchangé.' },
+  },
+  en: {
+    verify: { subject: 'Activate your Dermora account', preheader: 'One click to start your personalised routine.', title: 'Welcome to Dermora', hello: 'Hello', body: ['Thank you for joining us! Your space is ready: skin analysis, a routine that fits your budget and products available in Morocco.', 'To activate your account, simply confirm your email address.'], button: 'Activate my account', note: 'This link is valid for 48 hours. If you did not create a Dermora account, simply ignore this message.' },
+    reset: { subject: 'Your Dermora code', preheader: 'Your reset code, valid for 15 minutes.', title: 'Reset your password', hello: 'Hello', body: ['Here is your reset code. Enter it in the app to choose a new password.'], note: 'This code is valid for 15 minutes. If you did not request it, ignore this message: your password stays unchanged.' },
+  },
+  ar: {
+    verify: { subject: 'فعّلي حسابك في ديرمورا', preheader: 'نقرة واحدة لبدء روتينك المخصص.', title: 'مرحباً بك في ديرمورا', hello: 'مرحباً', body: ['شكراً لانضمامك إلينا! فضاؤك جاهز: تحليل البشرة، وروتين يناسب ميزانيتك، ومنتجات متوفرة في المغرب.', 'لتفعيل حسابك، يكفي تأكيد بريدك الإلكتروني.'], button: 'تفعيل حسابي', note: 'هذا الرابط صالح لمدة 48 ساعة. إذا لم تنشئي حساباً في ديرمورا، تجاهلي هذه الرسالة.' },
+    reset: { subject: 'رمز ديرمورا الخاص بك', preheader: 'رمز إعادة التعيين، صالح لمدة 15 دقيقة.', title: 'إعادة تعيين كلمة المرور', hello: 'مرحباً', body: ['إليك رمز إعادة التعيين. أدخليه في التطبيق لاختيار كلمة مرور جديدة.'], note: 'هذا الرمز صالح لمدة 15 دقيقة. إذا لم تطلبيه، تجاهلي هذه الرسالة: كلمة المرور لم تتغير.' },
+  },
 };
+const mailLang = (l?: string | null): MailLang => (l === 'en' ? 'en' : l === 'ar' ? 'ar' : 'fr');
 const email = z.string().trim().toLowerCase().email('Adresse e-mail invalide');
 const password = z.string().min(8, '8 caractères minimum').max(128).regex(/[A-Za-z]/, 'Au moins une lettre').regex(/[0-9]/, 'Au moins un chiffre');
 
@@ -59,14 +70,10 @@ export class AuthService {
 
   private async sendVerification(user: Pick<User, 'email' | 'firstName' | 'lang'>, token: string) {
     const link = `${publicWebUrl()}/verify?token=${token}`;
-    const T = MAIL[user.lang === 'en' ? 'en' : user.lang === 'ar' ? 'ar' : 'fr'];
-    const dir = user.lang === 'ar' ? 'rtl' : 'ltr';
-    this.mailer.sendInBackground(
-      user.email!,
-      T.subject,
-      `${T.hello} ${user.firstName ?? ''},\n\n${T.body}\n${link}\n\n${T.expires}\n\nCare Beyond Beauty — Dermora`,
-      `<div dir="${dir}" style="font-family:Georgia,serif;color:#2a1820;max-width:520px"><h2 style="color:#7a1f3d">Dermora</h2><p>${T.hello} ${user.firstName ?? ''},</p><p>${T.body}</p><p><a href="${link}" style="display:inline-block;background:#7a1f3d;color:#fff;padding:12px 22px;border-radius:999px;text-decoration:none">${T.button}</a></p><p style="color:#8e7880;font-size:12px">${T.expires}<br>${link}</p></div>`,
-    );
+    const lang = mailLang(user.lang);
+    const T = MAIL[lang].verify;
+    const mail = renderMail({ lang, preheader: T.preheader, title: T.title, greeting: `${T.hello} ${user.firstName ?? ''},`.replace(' ,', ','), paragraphs: T.body, button: { label: T.button, url: link }, note: T.note });
+    this.mailer.sendInBackground(user.email!, T.subject, mail.text, mail.html);
     // Développement sans SMTP : le lien est renvoyé pour pouvoir tester
     return !this.mailer.configured && process.env.NODE_ENV !== 'production' ? { devLink: link } : {};
   }
@@ -112,12 +119,10 @@ export class AuthService {
     }
     const code = String(randomInt(100000, 999999));
     await this.prisma.user.update({ where: { id: user.id }, data: { resetCodeHash: sha(user.id + code), resetExpiresAt: new Date(Date.now() + 15 * 60_000), resetAttempts: 0 } });
-    this.mailer.sendInBackground(
-      user.email,
-      'Dermora — réinitialisation de votre mot de passe',
-      `Bonjour ${user.firstName ?? ''},\n\nVotre code de réinitialisation Dermora : ${code}\nIl est valable 15 minutes.\n\nSi vous n'êtes pas à l'origine de cette demande, ignorez ce message.\n\nCare Beyond Beauty — Dermora`,
-      `<div style="font-family:Georgia,serif;color:#2a1820"><h2 style="color:#7a1f3d">Dermora</h2><p>Bonjour ${user.firstName ?? ''},</p><p>Votre code de réinitialisation :</p><p style="font-size:28px;letter-spacing:8px;color:#7a1f3d"><b>${code}</b></p><p>Il est valable 15 minutes.</p><p style="color:#8e7880;font-size:12px">Si vous n'êtes pas à l'origine de cette demande, ignorez ce message.</p></div>`,
-    );
+    const lang = mailLang(user.lang);
+    const T = MAIL[lang].reset;
+    const mail = renderMail({ lang, preheader: T.preheader, title: T.title, greeting: `${T.hello} ${user.firstName ?? ''},`.replace(' ,', ','), paragraphs: T.body, code, note: T.note });
+    this.mailer.sendInBackground(user.email, T.subject, mail.text, mail.html);
     const dev = !this.mailer.configured && process.env.NODE_ENV !== 'production';
     return { ...generic, ...(dev ? { devCode: code } : {}) };
   }

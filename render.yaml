@@ -33,6 +33,12 @@ services:
         sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
+      - key: AI_API_KEY          # assistante gratuite (Groq) si Claude est indisponible
+        sync: false
+      - key: AI_BASE_URL
+        value: https://api.groq.com/openai/v1
+      - key: AI_MODEL
+        value: llama-3.3-70b-versatile
       - key: ASSISTANT_MODEL
         value: claude-opus-5-5
       - key: BREVO_API_KEY       # e-mails via l'API HTTPS de Brevo (le plan gratuit de Render bloque le SMTP)

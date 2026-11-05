@@ -117,7 +117,7 @@ const RITUALS = [
   { slug: 'citron', name: 'Citron sur la peau', ingredient: 'Citrus limon', forDomain: 'skin', benefits: 'Souvent conseillé pour les taches — mais déconseillé par nos experts.', howTo: 'Ne pas appliquer pur sur la peau.', precautions: ['Pas de citron pur sur la peau : brûlures et taches au soleil (phytophotodermatose)', 'Pour les taches, préférer niacinamide, acide azélaïque ou vitamine C + protection solaire'], avoidFor: ['all'] },
 ];
 
-const ARTICLES = [
+export const ARTICLES = [
   { slug: 'lire-une-etiquette', title: 'Lire une étiquette en 2 minutes', tag: 'Bases', summary: 'Liste INCI, ordre des ingrédients, allégations : les repères essentiels.', body: "Les ingrédients sont listés par ordre décroissant de concentration jusqu'à 1 %. Repérez d'abord les 5 premiers : ils composent l'essentiel du produit.\n\nCherchez les actifs qui correspondent à vos préoccupations (niacinamide pour les pores, céramides pour la barrière). Méfiez-vous des promesses de « guérison » : un cosmétique entretient, il ne soigne pas.\n\nPour les peaux sensibles, le parfum (FRAGRANCE/PARFUM) est souvent la première cause d'irritation." },
   { slug: 'protection-solaire-maroc', title: 'La protection solaire, toute l\'année', tag: 'Soleil', summary: 'Au Maroc, l\'indice UV dépasse souvent 8. Le bon geste, chaque matin.', body: "La protection solaire est la seule étape anti-âge et anti-taches indispensable. Appliquez l'équivalent de deux doigts pour le visage et le cou, en dernière étape du matin.\n\nRenouvelez toutes les deux heures en cas d'exposition, après la baignade ou la transpiration. Même par temps nuageux, les UVA traversent les nuages." },
   { slug: 'acne-les-bons-gestes', title: 'Acné : les bons gestes', tag: 'Acné', summary: 'Nettoyer sans décaper, hydrater, patienter 8 semaines.', body: "Un nettoyant doux matin et soir suffit : décaper la peau stimule le sébum. Introduisez un seul actif à la fois et laissez-lui 6 à 8 semaines.\n\nNe percez pas les boutons. Si l'acné est douloureuse, laisse des cicatrices ou ne s'améliore pas après 3 mois, consultez un dermatologue." },
@@ -125,7 +125,7 @@ const ARTICLES = [
 ];
 
 // Matrice de règles (validée par l'expert)
-const RULES = [
+export const RULES = [
   { domain: 'skin', moment: 'AM', order: 1, step: 'Nettoyant', category: 'cleanser', quantity: 'une noisette', introWeek: 1 },
   { domain: 'skin', moment: 'AM', order: 2, step: 'Sérum ciblé', category: 'serum', optional: true, quantity: '3 gouttes', introWeek: 3 },
   { domain: 'skin', moment: 'AM', order: 3, step: 'Hydratant', category: 'moisturizer', quantity: 'une noisette', introWeek: 2 },
@@ -246,4 +246,4 @@ async function main() {
   console.log('  Dermatologue  : salma@dermora.ma');
 }
 
-main().catch((e) => { console.error(e); process.exit(1); }).finally(() => prisma.$disconnect());
+if (require.main === module) main().catch((e) => { console.error(e); process.exit(1); }).finally(() => prisma.$disconnect());
