@@ -245,10 +245,16 @@ export class RoutineEngine {
     return {
       ...r,
       purchaseMad,
-      tierName: r.tier && r.tier in TIER_INFO ? TIER_INFO[r.tier as Tier].name : r.tier === 'budget' ? 'Sur mesure' : null,
+      tierName: r.tier && r.tier in TIER_INFO ? TIER_INFO[r.tier as Tier].name : r.tier === 'budget' ? 'Sur mesure' : r.tier === 'personalisee' ? 'Routine personnalisée' : null,
       steps: r.steps.map((s) => {
         const alt = (s.alternatives ?? {}) as { cheaper?: string; natural?: string };
-        return { ...s, product: s.productId ? map.get(s.productId) ?? null : null, cheaper: alt.cheaper ? map.get(alt.cheaper) ?? null : null, natural: alt.natural ? map.get(alt.natural) ?? null : null };
+        return {
+          ...s,
+          product: s.productId ? map.get(s.productId) ?? null : null,
+          checkedProduct: s.customProduct,
+          cheaper: alt.cheaper ? map.get(alt.cheaper) ?? null : null,
+          natural: alt.natural ? map.get(alt.natural) ?? null : null,
+        };
       }),
     };
   }

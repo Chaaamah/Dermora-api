@@ -443,36 +443,38 @@ model Scan {
 }
 
 model Routine {
-  id          String        @id @default(cuid())
-  userId      String
-  budgetMad   Int
-  tier        String? // eco | equilibre | premium | budget
-  totalMad    Float         @default(0)
-  active      Boolean       @default(true)
-  blocked     Boolean       @default(false)
-  blockReason String?
-  notes       String[]
-  createdAt   DateTime      @default(now())
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  steps       RoutineStep[]
+  id                    String        @id @default(cuid())
+  userId                String
+  budgetMad             Int
+  tier                  String? // eco | equilibre | premium | budget | personnalisee
+  personalizedRoutineId String?
+  totalMad              Float         @default(0)
+  active                Boolean       @default(true)
+  blocked               Boolean       @default(false)
+  blockReason           String?
+  notes                 String[]
+  createdAt             DateTime      @default(now())
+  user                  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  steps                 RoutineStep[]
 
   @@schema("care")
 }
 
 model RoutineStep {
-  id           String  @id @default(cuid())
-  routineId    String
-  moment       String // AM | PM | HAIR
-  order        Int
-  step         String
-  category     String
-  productId    String?
-  monthlyMad   Float   @default(0)
-  frequency    String
-  quantity     String?
-  introWeek    Int     @default(1)
-  alternatives Json? // { cheaper?: productId, natural?: ritualSlug }
-  routine      Routine @relation(fields: [routineId], references: [id], onDelete: Cascade)
+  id            String  @id @default(cuid())
+  routineId     String
+  moment        String // AM | PM | HAIR
+  order         Int
+  step          String
+  category      String
+  productId     String?
+  customProduct Json?
+  monthlyMad    Float   @default(0)
+  frequency     String
+  quantity      String?
+  introWeek     Int     @default(1)
+  alternatives  Json? // { cheaper?: productId, natural?: ritualSlug }
+  routine       Routine @relation(fields: [routineId], references: [id], onDelete: Cascade)
 
   @@schema("care")
 }

@@ -21,6 +21,11 @@ export function moroccoNow(d = new Date()) {
 }
 
 const toMin = (hhmm: string) => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; };
+const routineStepProductName = (step: { productId: string | null; customProduct: unknown }, names: Map<string, string>) => {
+  if (step.productId) return names.get(step.productId) ?? null;
+  const product = step.customProduct as { brand?: string | null; name?: string } | null;
+  return product?.name ? `${product.brand ?? ''} ${product.name}`.trim() : null;
+};
 
 /** Jours de la semaine où une étape est prévue, d'après sa fréquence (« 3 soirs par semaine », « 1 fois par semaine »…) */
 export function stepDays(frequency: string, hairDays: number[]): number[] {
@@ -91,7 +96,7 @@ export class RemindersService implements OnApplicationBootstrap, OnModuleDestroy
         if (!routine?.steps.length) continue;
         const products = await this.prisma.product.findMany({ where: { id: { in: routine.steps.map((s) => s.productId!).filter(Boolean) } }, select: { id: true, brand: true, name: true } });
         const pName = new Map(products.map((p) => [p.id, `${p.brand} ${p.name}`]));
-        const plan = this.schedule(st, routine.steps.map((s) => ({ ...s, productName: s.productId ? pName.get(s.productId) : null })), st.user.lang);
+        const plan = this.schedule(st, routine.steps.map((s) => ({ ...s, productName: routineStepProductName(s, pName) })), st.user.lang);
         const [done, logged] = await Promise.all([
           this.prisma.routineCheck.findMany({ where: { userId: st.userId, day }, select: { stepId: true } }),
           this.prisma.reminderLog.findMany({ where: { userId: st.userId, day }, select: { stepId: true } }),
@@ -133,7 +138,11 @@ export class RemindersController {
     const routine = await this.prisma.routine.findFirst({ where: { userId: u.id, active: true, blocked: false }, include: { steps: true } });
     const products = routine ? await this.prisma.product.findMany({ where: { id: { in: routine.steps.map((s) => s.productId!).filter(Boolean) } }, select: { id: true, brand: true, name: true } }) : [];
     const pName = new Map(products.map((p) => [p.id, `${p.brand} ${p.name}`]));
-    return { settings, timezone: TZ, schedule: routine ? this.reminders.schedule(settings, routine.steps.map((s) => ({ ...s, productName: s.productId ? pName.get(s.productId) : null })), me?.lang) : [] };
+    return {
+      settings,
+      timezone: TZ,
+      schedule: routine ? this.reminders.schedule(settings, routine.steps.map((s) => ({ ...s, productName: routineStepProductName(s, pName) })), me?.lang) : [],
+    };
   }
 
   @Put()

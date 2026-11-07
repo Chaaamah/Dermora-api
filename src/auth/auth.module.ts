@@ -1,5 +1,5 @@
 import { publicWebUrl } from '../common/i18n';
-import { BadRequestException, Body, ConflictException, Controller, ForbiddenException, HttpException, HttpStatus, Injectable, Module, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, ConflictException, Controller, ForbiddenException, HttpException, HttpStatus, Injectable, InternalServerErrorException, Module, Post, ServiceUnavailableException, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtService } from '@nestjs/jwt';
 import { createHash, randomInt, randomBytes, scrypt as scryptCb, timingSafeEqual } from 'crypto';
@@ -55,8 +55,8 @@ export class AuthService {
   tokens(user: Pick<User, 'id' | 'role' | 'email'>) {
     const payload = { sub: user.id, role: user.role, email: user.email };
     return {
-      accessToken: this.jwt.sign(payload, { secret: ACCESS_SECRET(), expiresIn: '1h' }),
-      refreshToken: this.jwt.sign({ sub: user.id }, { secret: REFRESH_SECRET(), expiresIn: '30d' }),
+      accessToken: this.jwt.sign(payload, { secret: ACCESS_SECRET(), algorithm: 'HS256', expiresIn: '1h' }),
+      refreshToken: this.jwt.sign({ sub: user.id }, { secret: REFRESH_SECRET(), algorithm: 'HS256', expiresIn: '30d' }),
     };
   }
 
@@ -111,6 +111,61 @@ export class AuthService {
     return { ...this.tokens(user), user: { id: user.id, role: user.role } };
   }
 
+  async socialLogin(idToken: string, acceptedTerms: boolean, allowCreate: boolean) {
+    const projectId = process.env.FIREBASE_PROJECT_ID?.trim();
+    if (!projectId) throw new InternalServerErrorException('La connexion sociale n’est pas configurée.');
+
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { initializeApp, getApps } = require('firebase-admin/app') as typeof import('firebase-admin/app');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { getAuth } = require('firebase-admin/auth') as typeof import('firebase-admin/auth');
+    const app = getApps().find((candidate) => candidate.name === 'dermora-auth')
+      ?? initializeApp({ projectId }, 'dermora-auth');
+
+    let claims: import('firebase-admin/auth').DecodedIdToken;
+    try {
+      claims = await getAuth(app).verifyIdToken(idToken);
+    } catch (error) {
+      const code = error && typeof error === 'object' && 'code' in error && typeof error.code === 'string'
+        ? error.code
+        : '';
+      if (['auth/argument-error', 'auth/id-token-expired', 'auth/id-token-revoked', 'auth/invalid-id-token'].includes(code)) {
+        throw new UnauthorizedException('Jeton Google ou Facebook invalide ou expiré.');
+      }
+      throw new ServiceUnavailableException('La vérification Google/Facebook est temporairement indisponible.');
+    }
+
+    const provider = claims.firebase?.sign_in_provider;
+    if (provider !== 'google.com' && provider !== 'facebook.com') {
+      throw new UnauthorizedException('Seules les connexions Google et Facebook sont acceptées.');
+    }
+    if (!claims.email || claims.email_verified !== true) {
+      throw new UnauthorizedException('Une adresse e-mail vérifiée est requise.');
+    }
+
+    const emailAddr = claims.email.trim().toLowerCase();
+    let user = await this.prisma.user.findUnique({ where: { email: emailAddr } });
+    if (!user) {
+      if (!allowCreate) throw new UnauthorizedException('Aucun compte Dermora associé à cette adresse.');
+      if (!acceptedTerms) throw new ForbiddenException('Acceptez les conditions et confirmez avoir 18 ans pour créer un compte.');
+      user = await this.prisma.user.create({
+        data: {
+          email: emailAddr,
+          firstName: typeof claims.name === 'string' && claims.name.trim() ? claims.name.trim().slice(0, 60) : emailAddr.split('@')[0].slice(0, 60),
+          role: 'CLIENT',
+          emailVerifiedAt: new Date(),
+        },
+      });
+    } else if (user.verifyTokenHash && !user.emailVerifiedAt) {
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: { emailVerifiedAt: new Date(), verifyTokenHash: null, verifyExpiresAt: null },
+      });
+    }
+
+    return { ...this.tokens(user), user: { id: user.id, role: user.role } };
+  }
+
   /** Envoie un code à 6 chiffres valable 15 minutes. Réponse identique si le compte n'existe pas. */
   async forgot(emailAddr: string) {
     const user = await this.prisma.user.findUnique({ where: { email: emailAddr } });
@@ -147,7 +202,7 @@ export class AuthService {
 
   async refresh(refreshToken: string) {
     try {
-      const p = this.jwt.verify(refreshToken, { secret: REFRESH_SECRET() });
+      const p = this.jwt.verify(refreshToken, { secret: REFRESH_SECRET(), algorithms: ['HS256'] });
       return this.tokens(await this.prisma.user.findUniqueOrThrow({ where: { id: p.sub } }));
     } catch {
       throw new UnauthorizedException('Session expirée');
@@ -195,6 +250,17 @@ export class AuthController {
   login(@Body() body: unknown) {
     const b = parse(z.object({ email, password: z.string().min(1) }), body);
     return this.auth.login(b.email, b.password);
+  }
+
+  @Throttle(LIMIT.login)
+  @Post('social')
+  social(@Body() body: unknown) {
+    const b = parse(z.object({
+      idToken: z.string().min(20).max(5000),
+      acceptedTerms: z.boolean().default(false),
+      allowCreate: z.boolean().default(true),
+    }), body);
+    return this.auth.socialLogin(b.idToken, b.acceptedTerms, b.allowCreate);
   }
 
   @Throttle(LIMIT.email)

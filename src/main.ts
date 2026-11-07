@@ -3,8 +3,10 @@ import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { validateJwtSecrets } from './common/auth';
 
 async function bootstrap() {
+  validateJwtSecrets();
   const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix('v1', { exclude: ['docs', 'health'] });
   // Tolère les erreurs de saisie (<https://…>, guillemets, / final) ; « * » autorisé dans un motif (ex. https://dermora-*.vercel.app)

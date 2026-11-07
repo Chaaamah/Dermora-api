@@ -17,8 +17,25 @@ export const OptionalAuth = () => SetMetadata(OPTIONAL_AUTH, true);
 export const CurrentUser = createParamDecorator((_: unknown, ctx: ExecutionContext): AuthUser =>
   ctx.switchToHttp().getRequest().user);
 
-export const ACCESS_SECRET = () => process.env.JWT_ACCESS_SECRET ?? 'dev-access';
-export const REFRESH_SECRET = () => process.env.JWT_REFRESH_SECRET ?? 'dev-refresh';
+const MIN_JWT_SECRET_BYTES = 32;
+
+export function validateJwtSecrets(env: NodeJS.ProcessEnv = process.env) {
+  const access = env.JWT_ACCESS_SECRET;
+  const refresh = env.JWT_REFRESH_SECRET;
+  if (!access || Buffer.byteLength(access, 'utf8') < MIN_JWT_SECRET_BYTES) {
+    throw new Error('JWT_ACCESS_SECRET must be configured with at least 32 bytes of random data.');
+  }
+  if (!refresh || Buffer.byteLength(refresh, 'utf8') < MIN_JWT_SECRET_BYTES) {
+    throw new Error('JWT_REFRESH_SECRET must be configured with at least 32 bytes of random data.');
+  }
+  if (access === refresh) {
+    throw new Error('JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must be different values.');
+  }
+  return { access, refresh };
+}
+
+export const ACCESS_SECRET = () => validateJwtSecrets().access;
+export const REFRESH_SECRET = () => validateJwtSecrets().refresh;
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -34,7 +51,7 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException('Connexion requise');
     }
     try {
-      const payload = this.jwt.verify(token, { secret: ACCESS_SECRET() });
+      const payload = this.jwt.verify(token, { secret: ACCESS_SECRET(), algorithms: ['HS256'] });
       req.user = { id: payload.sub, role: payload.role, email: payload.email } as AuthUser;
     } catch {
       if (optional) return true;

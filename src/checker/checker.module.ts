@@ -289,10 +289,60 @@ export class CheckerService {
     const created = await this.prisma.personalizedRoutine.create({
       data: { userId, concerns: routine.concerns, steps: routine.steps as never },
     });
+    await this.activatePersonalizedRoutine(userId, created.id);
     // Historique limité aux 10 dernières versions (les versions partagées sont conservées)
     const old = await this.prisma.personalizedRoutine.findMany({ where: { userId, shared: null }, orderBy: { createdAt: 'desc' }, skip: 10, select: { id: true } });
     if (old.length) await this.prisma.personalizedRoutine.deleteMany({ where: { id: { in: old.map((o) => o.id) } } });
-    return created;
+    return this.latestPersonalizedRoutine(userId);
+  }
+
+  async activatePersonalizedRoutine(userId: string, id: string) {
+    const saved = await this.prisma.personalizedRoutine.findFirst({ where: { id, userId } });
+    if (!saved) throw new NotFoundException();
+    const steps = saved.steps as Array<{
+      moment: string; order: number; step: string; category: string; frequency: string;
+      quantity?: string | null; product: Record<string, unknown> | null; alternatives?: Array<Record<string, unknown>>;
+    }>;
+    const monthlyMad = steps.reduce((sum, item) => {
+      const product = item.product;
+      return sum + (typeof product?.monthlyMad === 'number' ? product.monthlyMad : 0);
+    }, 0);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.routine.updateMany({ where: { userId, active: true }, data: { active: false } });
+      await tx.routine.create({
+        data: {
+          userId,
+          tier: 'personalisee',
+          personalizedRoutineId: saved.id,
+          budgetMad: Math.ceil(monthlyMad),
+          totalMad: monthlyMad,
+          notes: ['Routine basée sur vos produits vérifiés et les recommandations adaptées du catalogue.'],
+          steps: {
+            create: steps.map((item) => {
+              const product = item.product;
+              const isCatalogProduct = product?.source === 'recommended' && typeof product.id === 'string';
+              const catalogAlternatives = (item.alternatives ?? [])
+                .filter((alternative) => typeof alternative.id === 'string')
+                .map((alternative) => alternative.id as string);
+              return {
+                moment: item.moment,
+                order: item.order,
+                step: item.step,
+                category: item.category,
+                frequency: item.frequency,
+                quantity: item.quantity ?? null,
+                monthlyMad: typeof product?.monthlyMad === 'number' ? product.monthlyMad : 0,
+                productId: isCatalogProduct ? product.id as string : null,
+                customProduct: product?.source === 'owned' ? product as never : undefined,
+                alternatives: catalogAlternatives.length ? { cheaper: catalogAlternatives[0] } : undefined,
+              };
+            }),
+          },
+        },
+      });
+    });
+    await this.engine.current(userId);
+    return this.latestPersonalizedRoutine(userId);
   }
 
   async latestPersonalizedRoutine(userId: string) {
@@ -302,12 +352,17 @@ export class CheckerService {
       include: { shared: { select: { id: true, status: true, moderationNote: true, createdAt: true } } },
     });
     if (!routine) return null;
+    const active = await this.prisma.routine.findFirst({
+      where: { userId, active: true, personalizedRoutineId: routine.id },
+      select: { id: true },
+    });
     return {
       id: routine.id,
       concerns: routine.concerns,
       steps: routine.steps,
       createdAt: routine.createdAt,
       shared: routine.shared,
+      active: !!active,
     };
   }
 
@@ -405,6 +460,11 @@ export class CheckerController {
   @Post('personalized-routine')
   createPersonalizedRoutine(@CurrentUser() u: AuthUser) {
     return this.checker.savePersonalizedRoutine(u.id);
+  }
+
+  @Post('personalized-routine/:id/activate')
+  activatePersonalizedRoutine(@CurrentUser() u: AuthUser, @Param('id') id: string) {
+    return this.checker.activatePersonalizedRoutine(u.id, id);
   }
 
   @Post('personalized-routine/:id/share')
