@@ -282,6 +282,41 @@ export class AdminController {
     return r;
   }
 
+  // ───────── Routines communautaires ─────────
+
+  @Get('shared-routines')
+  async sharedRoutines(@Query('status') status = 'PENDING') {
+    if (!['PENDING', 'APPROVED', 'REJECTED'].includes(status)) throw new BadRequestException('Statut invalide.');
+    return this.prisma.sharedRoutine.findMany({
+      where: { status },
+      orderBy: { createdAt: 'asc' },
+      take: 100,
+      select: { id: true, concerns: true, steps: true, status: true, moderationNote: true, createdAt: true },
+    });
+  }
+
+  @Roles('ADMIN')
+  @Patch('shared-routines/:id')
+  async moderateSharedRoutine(@CurrentUser() u: AuthUser, @Param('id') id: string, @Body() body: unknown) {
+    const b = parse(z.object({
+      status: z.enum(['APPROVED', 'REJECTED']),
+      moderationNote: z.string().trim().max(500).optional(),
+    }), body);
+    await this.audit.log(u.id, `shared_routine:${b.status}`, `shared_routine:${id}`);
+    const routine = await this.prisma.sharedRoutine.update({
+      where: { id },
+      data: {
+        status: b.status,
+        moderationNote: b.moderationNote ?? null,
+        moderatedAt: new Date(),
+        publishedAt: b.status === 'APPROVED' ? new Date() : null,
+      },
+      select: { id: true, status: true, moderationNote: true, publishedAt: true },
+    }).catch(() => null);
+    if (!routine) throw new NotFoundException();
+    return routine;
+  }
+
   // ───────── Journal d'audit ─────────
 
   @Get('audit')

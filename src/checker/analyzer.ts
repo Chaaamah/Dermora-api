@@ -35,16 +35,20 @@ const RINSE_OFF = new Set(['cleanser', 'shampoo', 'conditioner', 'hair_mask', 'm
 
 /** Découpe une liste INCI (y compris issue d'une photo : césures, points, retours à la ligne). */
 export function parseInci(text: string): string[] {
-  let t = text
-    .replace(/\r/g, '\n')
-    .replace(/(\w)\s*-\s*\n\s*(\w)/g, '$1$2') // césure en fin de ligne
-    .replace(/(\w) - (\w)/g, '$1$2') // « CAPRY - LIC » (photo)
-    .replace(/\n+/g, ', ');
+  let t = text.replace(/\r/g, '\n').replace(/(\w)\s*-\s*\n\s*(\w)/g, '$1$2'); // césure en fin de ligne
   // Garder seulement ce qui suit « Ingredients : » si présent
   const m = /(ingr[ée]dients?|composition|inci)\s*[:：]/i.exec(t);
   if (m) t = t.slice(m.index + m[0].length);
+  // Séparateur principal : virgules (cas normal), sinon points, sinon tirets « A - B - C »
+  const commas = (t.match(/,/g) ?? []).length;
+  const dots = (t.match(/\.\s/g) ?? []).length;
+  const dashes = (t.match(/\s[-–]\s/g) ?? []).length;
+  const dashSeparated = commas < 3 && dots < 3 && dashes >= 3;
+  // Sinon, « CAPRY - LIC » est un mot coupé (photo) : on le recolle
+  if (!dashSeparated) t = t.replace(/(\w) - (\w)/g, '$1$2');
+  t = t.replace(/\n+/g, ', ');
   return t
-    .split(/[,;•·]|\.\s+|\s\*\s/)
+    .split(dashSeparated ? /[,;•·]|\s[-–]\s/ : /[,;•·]|\.\s+|\s\*\s/)
     .map((s) => s.replace(/\[[^\]]*\]|\{[^}]*\}/g, '').replace(/\d+([.,]\d+)?\s*%/g, '').replace(/[*†]/g, '').replace(/\s+/g, ' ').trim().toUpperCase())
     .map((s) => s.replace(/^AQUA\s*\/\s*WATER.*$|^WATER\s*\/\s*AQUA.*$/, 'AQUA').replace(/\.$/, ''))
     .filter((s) => s.length > 1 && s.length < 120 && /[A-Z]/.test(s));
@@ -62,7 +66,39 @@ const AHA = [/GLYCOLIC ACID/, /LACTIC ACID/, /MANDELIC ACID/, /MALIC ACID/, /TAR
 const FRAGRANCE = [/^PARFUM\b/, /^FRAGRANCE\b/, /^AROMA$/, /\bPARFUM\s*\/\s*FRAGRANCE/, /FRAGRANCE\s*\/\s*PARFUM/];
 const ALLERGENS = [/^LIMONENE$/, /^LINALOOL$/, /CITRONELLOL/, /GERANIOL/, /^CITRAL$/, /\bEUGENOL/, /COUMARIN/, /CINNAMAL/, /CINNAMYL ALCOHOL/, /HYDROXYCITRONELLAL/, /BENZYL SALICYLATE/, /BENZYL BENZOATE/, /BENZYL CINNAMATE/, /FARNESOL/, /ANISE ALCOHOL/, /ALPHA-ISOMETHYL IONONE/, /EVERNIA/];
 const BANNED_ALLERGENS = [/BUTYLPHENYL METHYLPROPIONAL/, /LILIAL/, /HYDROXYISOHEXYL 3-CYCLOHEXENE CARBOXALDEHYDE/, /LYRAL/];
-const ESSENTIAL_OILS = [/(LAVANDULA|MENTHA|EUCALYPTUS|CITRUS|MELALEUCA|ROSMARINUS|CINNAMOMUM|SYZYGIUM|PELARGONIUM|CYMBOPOGON|THYMUS|ORIGANUM).*(OIL|EXTRACT)/, /^MENTHOL$/, /^CAMPHOR$/, /PEPPERMINT/];
+// Huiles essentielles uniquement (« ... LEAF OIL ») : les extraits aqueux de ces plantes ne sont pas visés
+const ESSENTIAL_OILS = [/(LAVANDULA|MENTHA|EUCALYPTUS|CITRUS|MELALEUCA|ROSMARINUS|CINNAMOMUM|SYZYGIUM|PELARGONIUM|CYMBOPOGON|THYMUS|ORIGANUM)\b.*\bOIL\b/, /^MENTHOL$/, /^CAMPHOR$/, /PEPPERMINT OIL/];
+
+/** Allergies saisies en français (profil) → motifs INCI correspondants. */
+const ALLERGY_ALIASES: Array<[RegExp, RegExp[]]> = [
+  [/parfum|fragrance/i, FRAGRANCE_RULES()],
+  [/huiles? essentielles?/i, ESSENTIAL_OILS],
+  [/arachide|cacahu[eè]te/i, [/ARACHIS/]],
+  [/amande/i, [/PRUNUS AMYGDALUS/]],
+  [/noix|fruits? [àa] coque/i, [/JUGLANS/, /CORYLUS/, /PRUNUS AMYGDALUS/, /MACADAMIA/, /BUTYROSPERMUM/]],
+  [/lanoline/i, [/LANOLIN/]],
+  [/propolis|ruche|abeille|miel/i, [/PROPOLIS/, /^MEL$/, /HONEY/, /CERA ALBA/, /BEESWAX/]],
+  [/coco/i, [/COCOS NUCIFERA/, /COCO-/, /COCAMIDOPROPYL/]],
+  [/latex/i, [/LATEX/]],
+  [/m[ée]thylisothiazolinone|\bmit\b|\bmi\b/i, [/ISOTHIAZOLINONE/]],
+  [/paraben/i, [/PARABEN/]],
+  [/aspirine|salicyl/i, [/SALICYL/]],
+  [/sulfate/i, [/SULFATE/]],
+];
+function FRAGRANCE_RULES() { return [/^PARFUM\b/, /^FRAGRANCE\b/, /^AROMA$/]; }
+
+/** Ingrédients qui correspondent aux allergies déclarées (alias français + nom INCI tel quel). */
+export function allergyMatches(list: string[], allergies: string[]): string[] {
+  const rules: RegExp[] = [];
+  for (const raw of allergies) {
+    const a = raw.trim();
+    if (a.length < 3) continue;
+    for (const [re, inci] of ALLERGY_ALIASES) if (re.test(a)) rules.push(...inci);
+    const up = a.toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Z0-9 -]/g, '');
+    if (up.length >= 4) rules.push(new RegExp(`\\b${up.replace(/[-]/g, '\\-')}\\b`));
+  }
+  return list.filter((i) => rules.some((r) => r.test(i)));
+}
 const DRYING_ALCOHOL = [/ALCOHOL DENAT/, /SD ALCOHOL/, /^ALCOHOL$/, /^ETHANOL$/, /^ISOPROPYL ALCOHOL$/];
 const HARSH_SULFATES = [/SODIUM LAURYL SULFATE/, /AMMONIUM LAURYL SULFATE/];
 const ISOTHIAZOLINONES = [/METHYLISOTHIAZOLINONE/, /METHYLCHLOROISOTHIAZOLINONE/];
@@ -132,8 +168,7 @@ export function analyze(input: { ingredients: string[]; category: string; name?:
   if (forbidden.length) add('forbidden', 'stop', 'Ingrédient interdit dans les cosmétiques', 'Ces substances (blanchissants, mercure, corticoïdes) sont interdites dans les cosmétiques : risques de taches, d’amincissement de la peau et d’effets graves. Arrêtez ce produit et parlez-en à un médecin.', forbidden);
 
   // 2. Allergies déclarées
-  const allergies = p.allergies.map((a) => a.trim().toUpperCase()).filter((a) => a.length > 2);
-  const allergic = list.filter((i) => allergies.some((a) => i.includes(a)));
+  const allergic = allergyMatches(list, p.allergies);
   if (allergic.length) add('allergy', 'stop', 'Contient un ingrédient auquel vous êtes allergique', 'Vous avez signalé une allergie à cet ingrédient dans votre profil.', allergic);
 
   // 3. Grossesse / allaitement
@@ -180,7 +215,10 @@ export function analyze(input: { ingredients: string[]; category: string; name?:
   // 8. Type de peau visé par le produit
   const target = input.skinTypes?.length ? (input.skinTypes.includes('all') || !p.skinType || input.skinTypes.includes(p.skinType) ? null : input.skinTypes[0]) : targetSkinType(input.name ?? '');
   if (p.skinType && target && target !== p.skinType && !(target === 'grasse' && p.skinType === 'mixte') && !(target === 'seche' && p.skinType === 'normale')) {
-    add('skin_type', 'warn', `Formulé pour les peaux ${TYPE_FR[target] ?? target}`, target === 'seche' ? 'Texture probablement trop riche pour votre peau : risque de brillance ou d’imperfections.' : 'Formule prévue pour une peau plus grasse : elle peut dessécher ou tirailler la vôtre.', []);
+    // Produit prévu pour une peau plus sèche que la sienne → trop riche ; plus grasse → desséchant
+    const oiliness: Record<string, number> = { seche: 0, normale: 1, mixte: 2, grasse: 3 };
+    const tooRich = (oiliness[target] ?? 1) < (oiliness[p.skinType] ?? 1);
+    add('skin_type', 'warn', `Formulé pour les peaux ${TYPE_FR[target] ?? target}`, tooRich ? 'Texture probablement trop riche pour votre peau : risque de brillance ou d’imperfections.' : 'Formule prévue pour une peau plus grasse : elle peut dessécher ou tirailler la vôtre.', []);
   }
 
   // 9. Conseils

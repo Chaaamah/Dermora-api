@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Injectable, Logger, Module, NotFoundException, Param, Post, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Injectable, Logger, Module, NotFoundException, Param, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../common/common.module';
@@ -7,6 +7,8 @@ import { productInclude, serializeProduct } from '../catalog/catalog.module';
 import { freshOffers } from '../catalog/pricing';
 import { RoutineEngine } from '../routines/engine.service';
 import { RoutinesModule } from '../routines/routines.module';
+import { Throttle } from '@nestjs/throttler';
+import { LIMIT } from '../common/throttle';
 import { Analysis, CATEGORIES, Profile, analyze, guessCategory, parseInci } from './analyzer';
 
 type FullProduct = Prisma.ProductGetPayload<{ include: typeof productInclude }>;
@@ -24,9 +26,12 @@ const CheckZ = z.object({
   name: z.string().min(1).max(200),
   category: z.enum(CATEGORIES).optional().nullable(),
   ingredientsText: z.string().max(8000).optional().nullable(),
-  imageUrl: z.string().url().max(500).optional().nullable(),
+  // Seules les images publiques d'Open Beauty Facts sont acceptées (pas d'URL arbitraire chargée chez les utilisatrices)
+  imageUrl: z.string().max(500).regex(/^https:\/\/(images|static)\.openbeautyfacts\.org\/[\w./-]+$/).optional().nullable().catch(null),
   source: z.enum(['barcode', 'photo', 'catalog', 'manual']).optional(),
 });
+
+const needsAlternative = (v: string) => v === 'surveiller' || v === 'deconseille';
 
 @Injectable()
 export class CheckerService {
@@ -90,7 +95,7 @@ export class CheckerService {
       .filter((p) => this.engine.eligible(p, skin, hair) && freshOffers(p.offers).length)
       .map((p) => {
         const inci = p.ingredients.map((i) => i.ingredient.inci);
-        const own = analyze({ ingredients: inci, category, name: `${p.brand} ${p.name}`, avoidFor: p.avoidFor, skinTypes: p.skinTypes }, profile);
+        const own = analyze({ ingredients: inci, category: p.category, name: `${p.brand} ${p.name}`, avoidFor: p.avoidFor, skinTypes: p.skinTypes }, profile);
         const covers = p.concerns.filter((c) => profile.concerns.includes(c));
         const score = this.engine.score(p, profile.concerns, skin, hair) - own.issues.filter((i) => i.level !== 'info').length * 5 + (inci.some((x) => flagged.has(x)) ? -10 : 0);
         return { p, own, covers, score, price: freshOffers(p.offers)[0]?.priceMad ?? Infinity };
@@ -130,7 +135,7 @@ export class CheckerService {
       }
     }
     const analysis = analyze({ ingredients, category, name: `${b.brand ?? ''} ${b.name}`, avoidFor, skinTypes }, profile);
-    const alternatives = analysis.verdict === 'adapte' ? [] : await this.alternatives(category, analysis, profile, skin, hair, b.productId);
+    const alternatives = needsAlternative(analysis.verdict) ? await this.alternatives(category, analysis, profile, skin, hair, b.productId) : [];
     const saved = await this.prisma.productCheck.create({
       data: {
         userId, barcode: b.barcode ?? null, productId: b.productId ?? null, brand: b.brand ?? null, name: b.name, category, imageUrl,
@@ -150,9 +155,222 @@ export class CheckerService {
     const c = await this.prisma.productCheck.findFirst({ where: { id, userId } });
     if (!c) throw new NotFoundException();
     const { profile, skin, hair } = await this.profile(userId);
-    const a = (c.result as unknown as { analysis: Analysis }).analysis;
-    const alternatives = a.verdict === 'adapte' ? [] : await this.alternatives(c.category, a, profile, skin, hair, c.productId);
-    return { ...this.serialize(c), alternatives };
+    const linked = c.productId ? await this.prisma.product.findUnique({ where: { id: c.productId }, include: productInclude }) : null;
+    const parsed = parseInci(c.ingredientsText ?? '');
+    const a = analyze({
+      ingredients: parsed.length ? parsed : linked?.ingredients.map((i) => i.ingredient.inci) ?? [],
+      category: c.category, name: `${c.brand ?? ''} ${c.name}`, avoidFor: linked?.avoidFor, skinTypes: linked?.skinTypes,
+    }, profile);
+    const fresh = a.verdict === c.verdict ? c : await this.prisma.productCheck.update({
+      where: { id: c.id },
+      data: { verdict: a.verdict, result: { analysis: a, profile: { skinType: profile.skinType, sensitive: profile.sensitive, concerns: profile.concerns } } as never },
+    });
+    const alternatives = needsAlternative(a.verdict) ? await this.alternatives(c.category, a, profile, skin, hair, c.productId) : [];
+    return { ...this.serialize(fresh), analysis: a, alternatives };
+  }
+
+  /** Builds a safe routine from the user's latest product checks and fills gaps from the catalog engine. */
+  async personalizedRoutine(userId: string) {
+    const [engineOptions, { profile }, checks] = await Promise.all([
+      this.engine.options(userId),
+      this.profile(userId),
+      this.prisma.productCheck.findMany({ where: { userId }, orderBy: { createdAt: 'desc' }, take: 100 }),
+    ]);
+    if (engineOptions.blocked) return { ...engineOptions, concerns: profile.concerns, steps: [], excluded: [], ownedCount: 0 };
+    if (!checks.length) return { blocked: false, blockReason: null, concerns: profile.concerns, steps: [], excluded: [], ownedCount: 0 };
+
+    const linkedProducts = await this.prisma.product.findMany({
+      where: { id: { in: checks.map((c) => c.productId).filter((id): id is string => !!id) } },
+      include: productInclude,
+    });
+    const linkedById = new Map(linkedProducts.map((p) => [p.id, p]));
+    const reviewed = checks.map((check) => {
+      const linked = check.productId ? linkedById.get(check.productId) : undefined;
+      const parsed = parseInci(check.ingredientsText ?? '');
+      const ingredients = parsed.length
+        ? parsed
+        : linked?.ingredients.map((x) => x.ingredient.inci) ?? [];
+      const analysis = analyze({
+        ingredients,
+        category: check.category,
+        name: `${check.brand ?? ''} ${check.name}`,
+        avoidFor: linked?.avoidFor,
+        skinTypes: linked?.skinTypes,
+      }, profile);
+      return { check, analysis };
+    });
+    const safeChecks = reviewed.filter((x) => x.analysis.verdict === 'adapte');
+    const excluded = reviewed
+      .filter((x) => x.analysis.verdict !== 'adapte')
+      .map(({ check, analysis }) => ({ name: check.name, brand: check.brand, category: check.category, verdict: analysis.verdict }));
+
+    const options = engineOptions.options as Array<{
+      tier: string;
+      steps: Array<Record<string, unknown> & { category: string; product: Record<string, unknown> | null }>;
+    }>;
+    const selected = options.find((x) => x.tier === 'equilibre') ?? options[0];
+    if (!selected) return { blocked: false, blockReason: null, concerns: profile.concerns, steps: [], excluded, ownedCount: safeChecks.length };
+
+    const optionsByCategory = new Map<string, Record<string, unknown>[]>();
+    for (const option of options) {
+      for (const step of option.steps) {
+        if (!step.product) continue;
+        const items = optionsByCategory.get(step.category) ?? [];
+        const product = step.product as Record<string, unknown>;
+        if (!items.some((item) => item.id === product.id)) items.push(product);
+        optionsByCategory.set(step.category, items);
+      }
+    }
+
+    const usedCheckIds = new Set<string>();
+    const steps = selected.steps.map((step) => {
+      const own = safeChecks.find(({ check }) =>
+        !usedCheckIds.has(check.id) && this.checkCategoryMatches(check.category, step.category),
+      );
+      if (own) usedCheckIds.add(own.check.id);
+      const alternatives = (optionsByCategory.get(step.category) ?? []).slice(0, 3);
+      return {
+        moment: step.moment,
+        order: step.order,
+        step: step.step,
+        category: step.category,
+        frequency: step.frequency,
+        quantity: step.quantity,
+        product: own
+          ? {
+              id: own.check.id,
+              name: own.check.name,
+              brand: own.check.brand,
+              category: own.check.category,
+              imageUrl: own.check.imageUrl,
+              source: 'owned',
+              verdict: own.analysis.verdict,
+            }
+          : step.product
+            ? { ...step.product, source: 'recommended' }
+            : null,
+        productCheckId: own?.check.id ?? null,
+        status: own ? 'owned' : step.product ? 'recommended' : 'missing',
+        alternatives,
+      };
+    });
+
+    return {
+      blocked: false,
+      blockReason: null,
+      concerns: profile.concerns,
+      steps,
+      excluded,
+      ownedCount: safeChecks.length,
+      notice: 'Routine cosmétique personnalisée, à adapter selon votre tolérance. Ne remplace pas un avis médical.',
+    };
+  }
+
+  private checkCategoryMatches(checked: string, planned: string) {
+    const aliases: Record<string, string[]> = {
+      serum: ['serum', 'toner'],
+      treatment: ['treatment', 'mask'],
+      hair_mask: ['hair_mask'],
+    };
+    return (aliases[planned] ?? [planned]).includes(checked);
+  }
+
+  async savePersonalizedRoutine(userId: string) {
+    const activeShare = await this.prisma.sharedRoutine.findFirst({
+      where: { userId, status: { in: ['PENDING', 'APPROVED'] } },
+      select: { id: true },
+    });
+    if (activeShare) throw new BadRequestException('Retirez votre partage avant de créer une nouvelle version.');
+    const routine = await this.personalizedRoutine(userId);
+    if (routine.blocked) throw new BadRequestException(routine.blockReason ?? 'Routine indisponible pour le moment.');
+    if (!routine.steps.length || !routine.ownedCount) {
+      throw new BadRequestException('Vérifiez au moins un produit adapté avant de créer votre routine.');
+    }
+    const created = await this.prisma.personalizedRoutine.create({
+      data: { userId, concerns: routine.concerns, steps: routine.steps as never },
+    });
+    // Historique limité aux 10 dernières versions (les versions partagées sont conservées)
+    const old = await this.prisma.personalizedRoutine.findMany({ where: { userId, shared: null }, orderBy: { createdAt: 'desc' }, skip: 10, select: { id: true } });
+    if (old.length) await this.prisma.personalizedRoutine.deleteMany({ where: { id: { in: old.map((o) => o.id) } } });
+    return created;
+  }
+
+  async latestPersonalizedRoutine(userId: string) {
+    const routine = await this.prisma.personalizedRoutine.findFirst({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      include: { shared: { select: { id: true, status: true, moderationNote: true, createdAt: true } } },
+    });
+    if (!routine) return null;
+    return {
+      id: routine.id,
+      concerns: routine.concerns,
+      steps: routine.steps,
+      createdAt: routine.createdAt,
+      shared: routine.shared,
+    };
+  }
+
+  async sharePersonalizedRoutine(userId: string, id: string, consent: boolean) {
+    if (!consent) throw new BadRequestException('Votre accord explicite est requis pour partager la routine.');
+    const activeShare = await this.prisma.sharedRoutine.findFirst({
+      where: { userId, personalizedRoutineId: { not: id }, status: { in: ['PENDING', 'APPROVED'] } },
+      select: { id: true },
+    });
+    if (activeShare) throw new BadRequestException('Retirez votre partage actuel avant d’en proposer un autre.');
+    const routine = await this.prisma.personalizedRoutine.findFirst({ where: { id, userId } });
+    if (!routine) throw new NotFoundException();
+    const existing = await this.prisma.sharedRoutine.findUnique({ where: { personalizedRoutineId: id } });
+    if (existing) {
+      if (existing.status !== 'REJECTED') throw new BadRequestException('Cette routine est déjà en attente ou publiée.');
+      await this.prisma.sharedRoutine.delete({ where: { id: existing.id } });
+    }
+    const privateSteps = routine.steps as Array<Record<string, unknown>>;
+    const publicSteps = privateSteps.map((step) => {
+      const product = step.product as Record<string, unknown> | null;
+      const alternatives = (step.alternatives as Array<Record<string, unknown>> | undefined) ?? [];
+      return {
+        moment: step.moment,
+        order: step.order,
+        step: step.step,
+        category: step.category,
+        frequency: step.frequency,
+        product: product ? {
+          name: product.name,
+          brand: product.brand,
+          category: product.category,
+          type: product.source === 'owned' ? 'member_product' : 'catalog_recommendation',
+        } : null,
+        alternatives: alternatives.map((item) => ({ name: item.name, brand: item.brand, category: item.category })),
+      };
+    });
+    return this.prisma.sharedRoutine.create({
+      data: {
+        userId,
+        personalizedRoutineId: routine.id,
+        concerns: routine.concerns,
+        steps: publicSteps as never,
+        consentAt: new Date(),
+      },
+      select: { id: true, status: true, createdAt: true },
+    });
+  }
+
+  async communityRoutines(userId: string) {
+    const { profile } = await this.profile(userId);
+    if (!profile.concerns.length) return [];
+    const routines = await this.prisma.sharedRoutine.findMany({
+      where: { status: 'APPROVED', userId: { not: userId }, concerns: { hasSome: profile.concerns } },
+      orderBy: { publishedAt: 'desc' },
+      take: 20,
+      select: { id: true, concerns: true, steps: true, publishedAt: true },
+    });
+    return routines.map((routine) => ({
+      id: routine.id,
+      concerns: routine.concerns,
+      steps: routine.steps,
+      publishedAt: routine.publishedAt,
+    }));
   }
 }
 
@@ -163,6 +381,7 @@ export class CheckerService {
 export class CheckerController {
   constructor(private prisma: PrismaService, private checker: CheckerService) {}
 
+  @Throttle(LIMIT.lookup)
   @Get('lookup/:barcode')
   lookup(@Param('barcode') barcode: string) {
     return this.checker.lookup(barcode);
@@ -171,6 +390,39 @@ export class CheckerController {
   @Post()
   check(@CurrentUser() u: AuthUser, @Body() body: unknown) {
     return this.checker.check(u.id, body);
+  }
+
+  @Get('routine-preview')
+  routinePreview(@CurrentUser() u: AuthUser) {
+    return this.checker.personalizedRoutine(u.id);
+  }
+
+  @Get('personalized-routine')
+  personalizedRoutine(@CurrentUser() u: AuthUser) {
+    return this.checker.latestPersonalizedRoutine(u.id);
+  }
+
+  @Post('personalized-routine')
+  createPersonalizedRoutine(@CurrentUser() u: AuthUser) {
+    return this.checker.savePersonalizedRoutine(u.id);
+  }
+
+  @Post('personalized-routine/:id/share')
+  sharePersonalizedRoutine(@CurrentUser() u: AuthUser, @Param('id') id: string, @Body() body: unknown) {
+    const b = parse(z.object({ consent: z.literal(true) }), body);
+    return this.checker.sharePersonalizedRoutine(u.id, id, b.consent);
+  }
+
+  @Get('community-routines')
+  communityRoutines(@CurrentUser() u: AuthUser) {
+    return this.checker.communityRoutines(u.id);
+  }
+
+  @Delete('community-routines/:id')
+  async revokeCommunityRoutine(@CurrentUser() u: AuthUser, @Param('id') id: string) {
+    const result = await this.prisma.sharedRoutine.deleteMany({ where: { id, userId: u.id } });
+    if (!result.count) throw new NotFoundException();
+    return { ok: true };
   }
 
   @Get()

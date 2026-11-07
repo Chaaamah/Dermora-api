@@ -24,7 +24,11 @@ export class CareController {
   list() {
     return this.prisma.dermatologist.findMany({
       where: { verified: true },
-      select: { id: true, fullName: true, title: true, city: true, bio: true, languages: true, priceMad: true },
+      select: {
+        id: true, fullName: true, title: true, city: true, bio: true, languages: true, priceMad: true,
+        offerings: { orderBy: [{ category: 'asc' }, { title: 'asc' }] },
+        technologies: { orderBy: { name: 'asc' } },
+      },
       orderBy: { fullName: 'asc' },
     });
   }
@@ -33,7 +37,15 @@ export class CareController {
   async mine(@CurrentUser() u: AuthUser) {
     const link = await this.prisma.careLink.findFirst({
       where: { patientId: u.id, status: { in: ['PENDING', 'ACTIVE'] } },
-      include: { dermatologist: { select: { id: true, fullName: true, title: true, city: true, bio: true, languages: true, priceMad: true } } },
+      include: {
+        dermatologist: {
+          select: {
+            id: true, fullName: true, title: true, city: true, bio: true, languages: true, priceMad: true,
+            offerings: { orderBy: [{ category: 'asc' }, { title: 'asc' }] },
+            technologies: { orderBy: { name: 'asc' } },
+          },
+        },
+      },
     });
     const notes = link?.status === 'ACTIVE'
       ? await this.prisma.clinicalNote.findMany({ where: { patientId: u.id, dermatologistId: link.dermatologistId, recommendation: { not: null } }, orderBy: { createdAt: 'desc' }, select: { id: true, recommendation: true, createdAt: true } })

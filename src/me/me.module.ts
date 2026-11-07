@@ -119,7 +119,12 @@ export class MeController {
   /** DER-06 / RG-12 — suppression totale en un clic */
   @Delete()
   async remove(@CurrentUser() u: AuthUser) {
-    await this.prisma.user.delete({ where: { id: u.id } });
+    // Données sans lien direct avec le compte : anonymisées (clics « Acheter », signalements)
+    await this.prisma.$transaction([
+      this.prisma.clickEvent.updateMany({ where: { userId: u.id }, data: { userId: null } }),
+      this.prisma.report.updateMany({ where: { userId: u.id }, data: { userId: null } }),
+      this.prisma.user.delete({ where: { id: u.id } }),
+    ]);
     return { deleted: true, note: 'Photos et données de peau effacées ; purge des sauvegardes sous 30 jours.' };
   }
 }

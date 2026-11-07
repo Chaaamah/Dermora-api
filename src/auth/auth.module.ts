@@ -9,6 +9,8 @@ import { PrismaService } from '../common/common.module';
 import { ACCESS_SECRET, AuthGuard, AuthUser, CurrentUser, REFRESH_SECRET, parse, z } from '../common/auth';
 import { MailerService } from '../notifications/notifications.module';
 import { MailLang, renderMail } from '../notifications/email-template';
+import { Throttle } from '@nestjs/throttler';
+import { LIMIT } from '../common/throttle';
 
 const scrypt = promisify(scryptCb) as (pw: string, salt: Buffer, len: number) => Promise<Buffer>;
 
@@ -165,6 +167,7 @@ export class AuthService {
 export class AuthController {
   constructor(private auth: AuthService) {}
 
+  @Throttle(LIMIT.register)
   @Post('register')
   register(@Body() body: unknown) {
     const b = parse(z.object({
@@ -175,27 +178,32 @@ export class AuthController {
     return this.auth.register(data);
   }
 
+  @Throttle(LIMIT.code)
   @Post('verify')
   verify(@Body() body: unknown) {
     return this.auth.verify(parse(z.object({ token: z.string().min(20).max(200) }), body).token);
   }
 
+  @Throttle(LIMIT.email)
   @Post('verify/resend')
   resend(@Body() body: unknown) {
     return this.auth.resendVerification(parse(z.object({ email }), body).email);
   }
 
+  @Throttle(LIMIT.login)
   @Post('login')
   login(@Body() body: unknown) {
     const b = parse(z.object({ email, password: z.string().min(1) }), body);
     return this.auth.login(b.email, b.password);
   }
 
+  @Throttle(LIMIT.email)
   @Post('password/forgot')
   forgot(@Body() body: unknown) {
     return this.auth.forgot(parse(z.object({ email }), body).email);
   }
 
+  @Throttle(LIMIT.code)
   @Post('password/reset')
   reset(@Body() body: unknown) {
     const b = parse(z.object({ email, code: z.string().regex(/^\d{6}$/, 'Code à 6 chiffres'), password }), body);
@@ -204,6 +212,7 @@ export class AuthController {
 
   @ApiBearerAuth()
   @UseGuards(AuthGuard)
+  @Throttle(LIMIT.login)
   @Post('password/change')
   change(@CurrentUser() u: AuthUser, @Body() body: unknown) {
     const b = parse(z.object({ current: z.string().min(1), password }), body);

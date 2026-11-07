@@ -1,4 +1,4 @@
-import { Body, Controller, ForbiddenException, Get, Module, NotFoundException, Param, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, Module, NotFoundException, Param, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuditService, PrismaService } from '../common/common.module';
@@ -33,7 +33,63 @@ export class ProController {
 
   @Get('me')
   async me(@CurrentUser() u: AuthUser) {
-    return this.prisma.dermatologist.findUnique({ where: { userId: u.id } });
+    return this.prisma.dermatologist.findUnique({
+      where: { userId: u.id },
+      include: { offerings: { orderBy: [{ category: 'asc' }, { title: 'asc' }] }, technologies: { orderBy: { name: 'asc' } } },
+    });
+  }
+
+  @Get('catalog')
+  async catalog(@CurrentUser() u: AuthUser) {
+    const d = await this.derm(u.id);
+    const [offerings, technologies] = await Promise.all([
+      this.prisma.dermatologistOffering.findMany({ where: { dermatologistId: d.id }, orderBy: [{ category: 'asc' }, { title: 'asc' }] }),
+      this.prisma.dermatologistTechnology.findMany({ where: { dermatologistId: d.id }, orderBy: { name: 'asc' } }),
+    ]);
+    return { offerings, technologies };
+  }
+
+  @Post('offerings')
+  async addOffering(@CurrentUser() u: AuthUser, @Body() body: unknown) {
+    const b = parse(z.object({
+      category: z.enum(['face', 'hair']),
+      title: z.string().trim().min(2).max(100),
+      description: z.string().trim().max(500).optional(),
+    }), body);
+    const d = await this.derm(u.id);
+    if ((await this.prisma.dermatologistOffering.count({ where: { dermatologistId: d.id } })) >= 30) throw new BadRequestException('30 soins au maximum.');
+    return this.prisma.dermatologistOffering.create({
+      data: { dermatologistId: d.id, ...b, description: b.description || null },
+    });
+  }
+
+  @Delete('offerings/:id')
+  async removeOffering(@CurrentUser() u: AuthUser, @Param('id') id: string) {
+    const d = await this.derm(u.id);
+    const result = await this.prisma.dermatologistOffering.deleteMany({ where: { id, dermatologistId: d.id } });
+    if (!result.count) throw new NotFoundException();
+    return { deleted: true };
+  }
+
+  @Post('technologies')
+  async addTechnology(@CurrentUser() u: AuthUser, @Body() body: unknown) {
+    const b = parse(z.object({
+      name: z.string().trim().min(2).max(100),
+      description: z.string().trim().max(500).optional(),
+    }), body);
+    const d = await this.derm(u.id);
+    if ((await this.prisma.dermatologistTechnology.count({ where: { dermatologistId: d.id } })) >= 30) throw new BadRequestException('30 technologies au maximum.');
+    return this.prisma.dermatologistTechnology.create({
+      data: { dermatologistId: d.id, ...b, description: b.description || null },
+    });
+  }
+
+  @Delete('technologies/:id')
+  async removeTechnology(@CurrentUser() u: AuthUser, @Param('id') id: string) {
+    const d = await this.derm(u.id);
+    const result = await this.prisma.dermatologistTechnology.deleteMany({ where: { id, dermatologistId: d.id } });
+    if (!result.count) throw new NotFoundException();
+    return { deleted: true };
   }
 
   /** Inscription / mise à jour du profil. La vérification de l'inscription à l'Ordre est faite par l'équipe Dermora. */
